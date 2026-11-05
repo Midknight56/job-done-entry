@@ -1,0 +1,192 @@
+<!-- Runs the app with a realistic local fixture and a valid one pixel PNG response. -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Job Done demo</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="layout">
+      <section class="phone" aria-label="Job Done app">
+        <header class="top">
+          <a class="brand" href="./index.html">Job Done</a>
+          <button id="panelToggle" class="panel-toggle">Behind the scenes</button>
+        </header>
+        <div id="replayBar" class="replay" hidden></div>
+        <nav id="tabs" class="tabs" aria-label="Main navigation">
+          <button data-tab="today" class="active">Today</button>
+          <button data-tab="calendar">Calendar</button>
+          <button data-tab="owed">Owed</button>
+          <button data-tab="settings">Settings</button>
+        </nav>
+        <div id="screen" class="screen" tabindex="0"></div>
+        <div class="talk">
+          <button id="talk" class="talk-button" aria-label="Hold to talk">
+            <span>Hold to talk</span>
+            <small id="recordTime"></small>
+          </button>
+          <div class="entry">
+            <textarea id="say" rows="2" aria-label="Describe the job" placeholder="Say what you did"></textarea>
+            <button id="sendText" aria-label="Send text">&#8594;</button>
+          </div>
+        </div>
+        <div id="sheet" class="sheet" hidden></div>
+        <div id="mobilePanel" class="mobile-panel" hidden>
+          <button id="closePanel" class="close-panel">Close</button>
+          <div id="panelMobile"></div>
+        </div>
+      </section>
+      <aside class="side-panel">
+        <h2>Behind the scenes</h2>
+        <div id="panel"></div>
+        <a href="./about.html">About Job Done</a>
+      </aside>
+    </main>
+    <script>
+      const currentTime = Date.now()
+      const invoiceIds = ['INV2-MARIA', 'INV2-DAVE', 'INV2-SAM']
+      /** Builds an ISO time relative to this demo week. */
+      const dayStart = (day, hour) => {
+        const date = new Date(currentTime)
+        date.setDate(date.getDate() + day)
+        date.setHours(hour, 0, 0, 0)
+        return date.toISOString()
+      }
+      const workspaceState = {
+        now: currentTime,
+        cursor: 8,
+        ws: {
+          id: 'demo',
+          tz: -new Date().getTimezoneOffset(),
+          settings: {
+            business: 'Elm Street Plumbing (demo)',
+            rateCard: {
+              currency: 'USD',
+              callout: '45.00',
+              labourPerHour: '85.00',
+              billingStepMinutes: 15,
+              taxPercent: '8',
+              deposit: '50.00'
+            },
+            holdMinutes: 2,
+            workHours: [8, 17]
+          },
+          customers: [
+            { id: 'c1', name: 'Maria Lopez', address: '14 Elm Street', email: 'PayPal sandbox buyer' },
+            { id: 'c2', name: 'Dave Chen', address: '21 Oak Street', email: 'PayPal sandbox buyer' },
+            { id: 'c3', name: 'Sam Okafor', address: '6 Pine Street', email: 'PayPal sandbox buyer' },
+            { id: 'c4', name: 'Priya Nair', address: '90 Cedar Road', email: 'PayPal sandbox buyer' }
+          ],
+          jobs: [
+            {
+              id: 'j1', customerId: 'c1', summary: 'Kitchen tap',
+              start: dayStart(0, 9), end: dayStart(0, 11), state: 'sent', invoiceId: invoiceIds[0]
+            },
+            {
+              id: 'j2', customerId: 'c2', summary: 'Boiler check',
+              start: dayStart(1, 10), end: dayStart(1, 12), state: 'paid', invoiceId: invoiceIds[1]
+            },
+            {
+              id: 'j3', customerId: 'c3', summary: 'Radiator valve',
+              start: dayStart(2, 13), end: dayStart(2, 14), state: 'held', depositInvoiceId: invoiceIds[2]
+            },
+            {
+              id: 'j4', customerId: 'c4', summary: 'Leak repair',
+              start: dayStart(3, 8), end: dayStart(3, 10), state: 'booked'
+            },
+            {
+              id: 'j5', customerId: 'c1', summary: 'Tap follow up',
+              start: dayStart(4, 14), end: dayStart(4, 15), state: 'offered'
+            }
+          ],
+          invoices: {
+            'INV2-MARIA': {
+              id: invoiceIds[0], customerId: 'c1', jobId: 'j1', kind: 'invoice',
+              total: '282.42', due: '282.42', status: 'SENT',
+              sentAt: currentTime - 2 * 86400000, reminders: 1,
+              payerUrl: 'https://www.sandbox.paypal.com/invoice/maria', hasQr: true, shared: false
+            },
+            'INV2-DAVE': {
+              id: invoiceIds[1], customerId: 'c2', jobId: 'j2', kind: 'invoice',
+              total: '120.00', due: '0.00', status: 'PAID',
+              sentAt: currentTime - 86400000, reminders: 0,
+              payerUrl: 'https://www.sandbox.paypal.com/invoice/dave', hasQr: true, shared: false
+            },
+            'INV2-SAM': {
+              id: invoiceIds[2], customerId: 'c3', jobId: 'j3', kind: 'invoice',
+              total: '95.00', due: '95.00', status: 'UNPAID',
+              sentAt: currentTime - 20 * 86400000, reminders: 2, hasQr: false, shared: true
+            }
+          },
+          holds: [{
+            jobId: 'j3', invoiceId: invoiceIds[2], start: dayStart(2, 13), end: dayStart(2, 14),
+            expiresAt: currentTime + 102000
+          }],
+          offers: {
+            o1: {
+              id: 'o1', jobId: 'j5', draftId: 'd5',
+              start: dayStart(4, 14), end: dayStart(4, 15), accepted: false
+            }
+          },
+          drafts: {},
+          waiting: [],
+          notices: [
+            { n: 8, at: currentTime - 10000, text: 'Maria invoice is ready.', kind: 'sent', invoiceId: invoiceIds[0] },
+            { n: 7, at: currentTime - 30000, text: 'Dave paid 120.00.', kind: 'paid', invoiceId: invoiceIds[1] }
+          ],
+          panel: [
+            {
+              n: 5, at: currentTime - 20000, kind: 'paypal', method: 'POST',
+              path: '/v2/invoicing/invoices', status: 201, ms: 540, id: invoiceIds[0],
+              debugId: 'sandbox-demo-01', text: 'Invoice created'
+            },
+            {
+              n: 6, at: currentTime - 10000, kind: 'model', method: 'POST',
+              path: '/api/agent', status: 200, ms: 820, neurons: 26.8,
+              text: 'Proposal priced from rate card'
+            }
+          ]
+        },
+        budget: { replay: true, appLeft: 0, ipLeft: 380 }
+      }
+      const invoiceProposal = {
+        kind: 'invoice',
+        draftId: 'd-maria',
+        customer: 'Maria Lopez',
+        summary: 'Kitchen tap replacement and leak check',
+        priced: {
+          lines: [
+            { name: 'Callout', quantity: '1', unitAmount: '45.00', amount: '45.00', source: 'rate card' },
+            { name: 'Labour', quantity: '2.5 hours', unitAmount: '85.00', amount: '212.50', source: 'rate card' }
+          ],
+          itemTotal: '257.50', tax: '20.60', taxPercent: '8', total: '278.10'
+        }
+      }
+      const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
+      const pngBytes = Uint8Array.from(atob(pngBase64), (character) => character.charCodeAt(0))
+      /** Supplies local API responses for the demo page. */
+      window.fetch = async (input, options = {}) => {
+        const url = String(input)
+        if (url.startsWith('/api/state')) return Response.json(workspaceState)
+        if (url === '/api/workspace') return Response.json(workspaceState)
+        if (url === '/api/agent') {
+          return Response.json({ proposal: invoiceProposal, message: null, replay: true, state: workspaceState })
+        }
+        if (url === '/api/voice') return Response.json({ text: 'Replace the kitchen tap' })
+        if (url.startsWith('/api/qr/')) {
+          return new Response(pngBytes, { status: 200, headers: { 'Content-Type': 'image/png' } })
+        }
+        if (url.includes('/send')) return Response.json({ invoiceId: invoiceIds[0], state: workspaceState })
+        if (url.includes('/accept')) return Response.json({ invoiceId: invoiceIds[2], state: workspaceState })
+        if (url.includes('/move')) return Response.json({ ok: true, text: 'Job moved.', state: workspaceState })
+        if (url.includes('/cash') || url.includes('/remind') || url.includes('/settings')) {
+          return Response.json({ state: workspaceState })
+        }
+        return Response.json({ error: 'not_found', message: 'Not found' }, { status: 404 })
+      }
+    </script>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

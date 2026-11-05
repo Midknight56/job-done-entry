@@ -1,0 +1,158 @@
+{
+  "id": "INV2-FT2C-KQ3G-47X2-632R",
+  "status": "CANCELLED",
+  "detail": {
+    "reference": "maria-807d3369",
+    "currency_code": "USD",
+    "note": "Kitchen tap at 14 Elm Street. Thank you.",
+    "category_code": "SHIPPABLE",
+    "invoice_number": "0004",
+    "invoice_date": "2026-10-22",
+    "payment_term": {
+      "term_type": "DUE_ON_RECEIPT",
+      "due_date": "2026-10-22"
+    },
+    "viewed_by_recipient": false,
+    "group_draft": false,
+    "metadata": {
+      "create_time": "2026-10-23T01:25:27Z",
+      "last_update_time": "2026-10-23T01:25:27Z",
+      "cancel_time": "2026-10-23T01:25:37Z",
+      "first_sent_time": "2026-10-23T01:25:34Z",
+      "last_sent_time": "2026-10-23T01:25:34Z",
+      "created_by_flow": "REGULAR_SINGLE",
+      "recipient_view_url": "https://www.sandbox.paypal.com/invoice/p/#FT2CKQ3G47X2632R",
+      "invoicer_view_url": "https://www.sandbox.paypal.com/invoice/details/INV2-FT2C-KQ3G-47X2-632R",
+      "caller_type": "API_V2_INVOICE",
+      "spam_info": {}
+    },
+    "archived": false
+  },
+  "invoicer": {
+    "business_name": "Elm Street Plumbing (demo)",
+    "email_address": "merchant@example.com"
+  },
+  "primary_recipients": [
+    {
+      "billing_info": {
+        "name": {
+          "given_name": "Maria",
+          "surname": "Lopez",
+          "full_name": "Maria Lopez"
+        },
+        "email_address": "buyer@example.com"
+      }
+    }
+  ],
+  "items": [
+    {
+      "id": "ITEM-43H20298H10427111",
+      "name": "Call out",
+      "quantity": "1",
+      "unit_amount": {
+        "currency_code": "USD",
+        "value": "45.00"
+      },
+      "tax": {
+        "id": "TAX-18V1605081206954Y",
+        "name": "Sales tax (demo)",
+        "percent": "8",
+        "amount": {
+          "currency_code": "USD",
+          "value": "3.60"
+        }
+      },
+      "item_date": "2026-10-22",
+      "unit_of_measure": "AMOUNT"
+    },
+    {
+      "id": "ITEM-5RP72946RJ112761Y",
+      "name": "Labour",
+      "description": "Kitchen tap",
+      "quantity": "1.5",
+      "unit_amount": {
+        "currency_code": "USD",
+        "value": "85.00"
+      },
+      "tax": {
+        "id": "TAX-18V1605081206954Y",
+        "name": "Sales tax (demo)",
+        "percent": "8",
+        "amount": {
+          "currency_code": "USD",
+          "value": "10.20"
+        }
+      },
+      "item_date": "2026-10-22",
+      "unit_of_measure": "HOURS"
+    },
+    {
+      "id": "ITEM-9T029284DJ394250M",
+      "name": "Kitchen tap",
+      "quantity": "1",
+      "unit_amount": {
+        "currency_code": "USD",
+        "value": "89.00"
+      },
+      "tax": {
+        "id": "TAX-18V1605081206954Y",
+        "name": "Sales tax (demo)",
+        "percent": "8",
+        "amount": {
+          "currency_code": "USD",
+          "value": "7.12"
+        }
+      },
+      "item_date": "2026-10-22",
+      "unit_of_measure": "QUANTITY"
+    }
+  ],
+  "configuration": {
+    "tax_calculated_after_discount": false,
+    "tax_inclusive": false,
+    "allow_tip": false,
+    "allow_only_pay_by_bank": false,
+    "allow_vba_payments": false,
+    "save_item_for_future": true,
+    "template_id": "TEMP-8NW21802Y7590334W"
+  },
+  "amount": {
+    "breakdown": {
+      "item_total": {
+        "currency_code": "USD",
+        "value": "261.50"
+      },
+      "discount": {
+        "invoice_discount": {
+          "amount": {
+            "currency_code": "USD",
+            "value": "0.00"
+          }
+        },
+        "item_discount": {
+          "currency_code": "USD",
+          "value": "0.00"
+        }
+      },
+      "tax_total": {
+        "currency_code": "USD",
+        "value": "20.92"
+      }
+    },
+    "currency_code": "USD",
+    "value": "282.42"
+  },
+  "due_amount": {
+    "currency_code": "USD",
+    "value": "282.42"
+  },
+  "links": [
+    {
+      "href": "https://api.sandbox.paypal.com/v2/invoicing/invoices/INV2-FT2C-KQ3G-47X2-632R",
+      "rel": "self",
+      "method": "GET"
+    }
+  ],
+  "unilateral": false,
+  "settings": {}
+}

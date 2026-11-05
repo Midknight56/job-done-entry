@@ -1,0 +1,62 @@
+{
+  "note": "Recorded model output from live runs, replayed when the free AI budget is used up. Filled by tools/record_samples.mjs.",
+  "lines": [
+    "Kitchen tap for Maria at 14 Elm, hour and a half, the tap was 89, she wants the bathroom one done next week.",
+    "Book the bathroom tap for Maria next week.",
+    "Dave paid cash, 108.",
+    "Remind Sam about his invoice.",
+    "What am I owed?"
+  ],
+  "turns": {
+    "kitchen tap for maria at 14 elm hour and a half the tap was 89 she wants the bathroom one done next week": {
+      "transcript": "Kitchen tap for Maria at 14 Elm, hour and a half, the tap was 89, she wants the bathroom one done next week.",
+      "outputs": [
+        "{\"calls\":[{\"tool\":\"find_customer\",\"args\":{\"name\":\"Maria\",\"place_hint\":\"14 Elm\"}},{\"tool\":\"price_lines\",\"args\":{\"lines\":[{\"kind\":\"callout\"},{\"kind\":\"labour\",\"hours\":1.5},{\"kind\":\"part\",\"description\":\"Tap\",\"cost\":89}]}}]}",
+        "{\"final\":{\"kind\":\"invoice\",\"customer_id\":\"c1\",\"line_ids\":[\"p1\",\"p2\",\"p3\"],\"summary\":\"Kitchen tap\",\"note\":\"Thanks Maria. Bathroom tap next week.\"}}"
+      ],
+      "recordedAt": "2026-10-23T02:14:37.663Z",
+      "actualNeurons": 15.55,
+      "chargedNeurons": 39.86
+    },
+    "book the bathroom tap for maria next week": {
+      "transcript": "Book the bathroom tap for Maria next week.",
+      "outputs": [
+        "{\"calls\":[{\"tool\":\"find_customer\",\"args\":{\"name\":\"Maria\",\"place_hint\":\"\"}},{\"tool\":\"find_slots\",\"args\":{\"duration_hours\":1,\"after\":\"2026-10-23\",\"before\":\"2026-10-29\"}}]}",
+        "{\"final\":{\"kind\":\"booking\",\"customer_id\":\"c1\",\"slot_id\":\"s1\",\"summary\":\"Bathroom tap\"}}"
+      ],
+      "recordedAt": "2026-10-23T02:14:39.714Z",
+      "actualNeurons": 15.15,
+      "chargedNeurons": 39.75
+    },
+    "dave paid cash 108": {
+      "transcript": "Dave paid cash, 108.",
+      "outputs": [
+        "{\"calls\":[{\"tool\":\"find_customer\",\"args\":{\"name\":\"Dave\",\"place_hint\":\"\"}},{\"tool\":\"open_invoices\",\"args\":{}}]}",
+        "{\"final\":{\"kind\":\"cash\",\"invoice_id\":\"INV2-79BF-MDPZ-X4MN-DP6F\",\"amount\":\"108.00\"}}"
+      ],
+      "recordedAt": "2026-10-23T02:14:42.348Z",
+      "actualNeurons": 12.68,
+      "chargedNeurons": 39.15
+    },
+    "remind sam about his invoice": {
+      "transcript": "Remind Sam about his invoice.",
+      "outputs": [
+        "{\"calls\":[{\"tool\":\"find_customer\",\"args\":{\"name\":\"Sam\",\"place_hint\":\"\"}},{\"tool\":\"open_invoices\",\"args\":{}}]}",
+        "{\"final\":{\"kind\":\"reminder\",\"invoice_id\":\"INV2-E3EW-Y6BR-B4XD-Z9M5\",\"text\":\"Hi Sam, just a friendly reminder that your invoice is due. Thanks!\"}}"
+      ],
+      "recordedAt": "2026-10-23T03:03:10.914Z",
+      "actualNeurons": 13.26,
+      "chargedNeurons": 39.4
+    },
+    "what am i owed": {
+      "transcript": "What am I owed?",
+      "outputs": [
+        "{\"calls\":[{\"tool\":\"open_invoices\",\"args\":{}}]}",
+        "{\"final\":{\"kind\":\"answer\",\"text\":\"You are owed £108.00 by Dave Chen and £340.00 by Sam Okafor. Total you are owed is £448.00.\",\"invoice_ids\":[\"INV2-KWKF-227N-A4PS-P2A3\",\"INV2-E3EW-Y6BR-B4XD-Z9M5\"]}}"
+      ],
+      "recordedAt": "2026-10-23T03:03:13.582Z",
+      "actualNeurons": 13.58,
+      "chargedNeurons": 39.11
+    }
+  }
+}

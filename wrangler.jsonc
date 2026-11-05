@@ -1,0 +1,39 @@
+{
+  "name": "job-done",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // Runs daily and stores a check only from 1 to 15 December.
+  "triggers": { "crons": ["17 12 * * *"] },
+  "assets": {
+    "directory": "public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*", "/webhooks/*", "/health", "/health/history"]
+  },
+  "kv_namespaces": [
+    // Your KV namespace id (wrangler kv namespace create JOBDONE). wrangler dev uses a local store.
+    { "binding": "JOBDONE", "id": "00000000000000000000000000000000" }
+  ],
+  "durable_objects": { "bindings": [{ "name": "WORKSPACE", "class_name": "WorkspaceDO" }, { "name": "CAPS", "class_name": "CapsDO" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["WorkspaceDO"] }, { "tag": "v2", "new_sqlite_classes": ["CapsDO"] }],
+  // Create with `wrangler d1 create hackathon-ledger`, put its id here, then load schema/ai_calls.sql with
+  // `wrangler d1 execute hackathon-ledger --remote --file=schema/ai_calls.sql`. Without this binding the app still
+  // runs and answers from its recorded model output.
+  "d1_databases": [
+    { "binding": "LEDGER", "database_name": "hackathon-ledger", "database_id": "00000000000000000000000000000000", "remote": true }
+  ],
+  "ai": { "binding": "AI" },
+  "vars": {
+    // Days the shared late invoice gets a real PayPal reminder from the daily scheduled run (UTC dates).
+    "LATE_REMINDER_DAYS": "2026-10-27,2026-10-31",
+    // PayPal's own reminders, as set on the sandbox account on 28 Oct 2026 (tools/sandbox_probe.py reminders-on):
+    // after the due date, every 3 days, 3 times, for invoices sent from that time on. /health?deep=1 compares them.
+    "PAYPAL_REMINDER_EVERY_DAYS": "3",
+    "PAYPAL_REMINDER_TIMES": "3",
+    "PAYPAL_REMINDERS_SINCE": "2026-10-28T21:05:00Z",
+    "APP_NAME": "job-done",
+    "HOLD_MINUTES": "1440",
+    "DEMO_HOLD_MINUTES": "2"
+  },
+  "observability": { "enabled": true }
+}

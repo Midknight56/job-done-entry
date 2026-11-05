@@ -1,0 +1,98 @@
+{
+  "id": "WH-0T490472X6099635W-7LJ29748BW389372K",
+  "create_time": "2015-09-25T23:14:14Z",
+  "resource_type": "invoices",
+  "event_type": "INVOICING.INVOICE.PAID",
+  "summary": "An invoice was created",
+  "resource": {
+    "tax_calculated_after_discount": true,
+    "metadata": {
+      "created_date": "2015-09-28 14:35:46 PDT",
+      "last_updated_date": "2015-09-28 14:37:13 PDT",
+      "first_sent_date": "2015-09-28 14:35:47 PDT",
+      "last_sent_date": "2015-09-28 14:35:47 PDT"
+    },
+    "payment_term": {
+      "term_type": "DUE_ON_RECEIPT",
+      "due_date": "2015-09-28 PDT"
+    },
+    "payments": [
+      {
+        "type": "PAYPAL",
+        "transaction_id": "22592127VV907111U",
+        "transaction_type": "SALE",
+        "method": "PAYPAL",
+        "date": "2015-09-28 14:37:13 PDT"
+      }
+    ],
+    "tax_inclusive": false,
+    "merchant_info": {
+      "email": "example@outlook.com",
+      "first_name": "Dennis",
+      "last_name": "Doctor",
+      "business_name": "Medical Professional LLC",
+      "address": {
+        "line1": "1234 Main St",
+        "line2": "Apt 302",
+        "city": "Portland",
+        "state": "OR",
+        "postal_code": "97217",
+        "country_code": "US"
+      }
+    },
+    "invoice_date": "2015-09-28 PDT",
+    "number": "MM00063",
+    "billing_info": [
+      {
+        "email": "example@example.com",
+        "business_name": "Medical Professionals LLC",
+        "language": "en_US"
+      }
+    ],
+    "total_amount": {
+      "currency": "USD",
+      "value": "1.00"
+    },
+    "paid_amount": {
+      "paypal": {
+        "currency": "USD",
+        "value": "1.00"
+      }
+    },
+    "links": [
+      {
+        "rel": "self",
+        "href": "https://api.sandbox.paypal.com/v1/invoicing/invoices/INV2-8FSD-3HT6-BRHR-UHYV",
+        "method": "GET"
+      }
+    ],
+    "id": "INV2-8FSD-3HT6-BRHR-UHYV",
+    "items": [
+      {
+        "name": "Sample Item",
+        "quantity": 1,
+        "unit_price": {
+          "currency": "USD",
+          "value": "1.00"
+        },
+        "unit_of_measure": "QUANTITY"
+      }
+    ],
+    "status": "PAID"
+  },
+  "links": [
+    {
+      "href": "https://api.sandbox.paypal.com/v1/notifications/webhooks-events/WH-0T490472X6099635W-7LJ29748BW389372K",
+      "rel": "self",
+      "method": "GET",
+      "encType": "application/json"
+    },
+    {
+      "href": "https://api.sandbox.paypal.com/v1/notifications/webhooks-events/WH-0T490472X6099635W-7LJ29748BW389372K/resend",
+      "rel": "resend",
+      "method": "POST",
+      "encType": "application/json"
+    }
+  ],
+  "event_version": "1.0"
+}

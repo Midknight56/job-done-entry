@@ -1,0 +1,182 @@
+{
+  "id": "INV2-SK36-GQBT-YYMS-6GZ4",
+  "status": "SENT",
+  "detail": {
+    "reference": "maria-6bd09fcd",
+    "currency_code": "USD",
+    "note": "Kitchen tap at 14 Elm Street. Thank you.",
+    "category_code": "SHIPPABLE",
+    "invoice_number": "0002",
+    "invoice_date": "2026-10-22",
+    "payment_term": {
+      "term_type": "DUE_ON_RECEIPT",
+      "due_date": "2026-10-22"
+    },
+    "viewed_by_recipient": false,
+    "group_draft": false,
+    "metadata": {
+      "create_time": "2026-10-23T01:24:32Z",
+      "last_update_time": "2026-10-23T01:24:32Z",
+      "first_sent_time": "2026-10-23T01:24:39Z",
+      "last_sent_time": "2026-10-23T01:24:39Z",
+      "created_by_flow": "REGULAR_SINGLE",
+      "recipient_view_url": "https://www.sandbox.paypal.com/invoice/p/#SK36GQBTYYMS6GZ4",
+      "invoicer_view_url": "https://www.sandbox.paypal.com/invoice/details/INV2-SK36-GQBT-YYMS-6GZ4",
+      "caller_type": "API_V2_INVOICE",
+      "spam_info": {}
+    },
+    "archived": false
+  },
+  "invoicer": {
+    "business_name": "Elm Street Plumbing (demo)",
+    "email_address": "merchant@example.com"
+  },
+  "primary_recipients": [
+    {
+      "billing_info": {
+        "name": {
+          "given_name": "Maria",
+          "surname": "Lopez",
+          "full_name": "Maria Lopez"
+        },
+        "email_address": "buyer@example.com"
+      }
+    }
+  ],
+  "items": [
+    {
+      "id": "ITEM-10V87025H5829023J",
+      "name": "Call out",
+      "quantity": "1",
+      "unit_amount": {
+        "currency_code": "USD",
+        "value": "45.00"
+      },
+      "tax": {
+        "id": "TAX-18V1605081206954Y",
+        "name": "Sales tax (demo)",
+        "percent": "8",
+        "amount": {
+          "currency_code": "USD",
+          "value": "3.60"
+        }
+      },
+      "item_date": "2026-10-22",
+      "unit_of_measure": "AMOUNT"
+    },
+    {
+      "id": "ITEM-6MT62448D2002744G",
+      "name": "Labour",
+      "description": "Kitchen tap",
+      "quantity": "1.5",
+      "unit_amount": {
+        "currency_code": "USD",
+        "value": "85.00"
+      },
+      "tax": {
+        "id": "TAX-18V1605081206954Y",
+        "name": "Sales tax (demo)",
+        "percent": "8",
+        "amount": {
+          "currency_code": "USD",
+          "value": "10.20"
+        }
+      },
+      "item_date": "2026-10-22",
+      "unit_of_measure": "HOURS"
+    },
+    {
+      "id": "ITEM-9XE01837D3559552V",
+      "name": "Kitchen tap",
+      "quantity": "1",
+      "unit_amount": {
+        "currency_code": "USD",
+        "value": "89.00"
+      },
+      "tax": {
+        "id": "TAX-18V1605081206954Y",
+        "name": "Sales tax (demo)",
+        "percent": "8",
+        "amount": {
+          "currency_code": "USD",
+          "value": "7.12"
+        }
+      },
+      "item_date": "2026-10-22",
+      "unit_of_measure": "QUANTITY"
+    }
+  ],
+  "configuration": {
+    "tax_calculated_after_discount": false,
+    "tax_inclusive": false,
+    "allow_tip": false,
+    "allow_only_pay_by_bank": false,
+    "allow_vba_payments": false,
+    "save_item_for_future": true,
+    "template_id": "TEMP-8NW21802Y7590334W"
+  },
+  "amount": {
+    "breakdown": {
+      "item_total": {
+        "currency_code": "USD",
+        "value": "261.50"
+      },
+      "discount": {
+        "invoice_discount": {
+          "amount": {
+            "currency_code": "USD",
+            "value": "0.00"
+          }
+        },
+        "item_discount": {
+          "currency_code": "USD",
+          "value": "0.00"
+        }
+      },
+      "tax_total": {
+        "currency_code": "USD",
+        "value": "20.92"
+      }
+    },
+    "currency_code": "USD",
+    "value": "282.42"
+  },
+  "due_amount": {
+    "currency_code": "USD",
+    "value": "282.42"
+  },
+  "links": [
+    {
+      "href": "https://api.sandbox.paypal.com/v2/invoicing/invoices/INV2-SK36-GQBT-YYMS-6GZ4",
+      "rel": "self",
+      "method": "GET"
+    },
+    {
+      "href": "https://api.sandbox.paypal.com/v2/invoicing/invoices/INV2-SK36-GQBT-YYMS-6GZ4",
+      "rel": "replace",
+      "method": "PUT"
+    },
+    {
+      "href": "https://api.sandbox.paypal.com/v2/invoicing/invoices/INV2-SK36-GQBT-YYMS-6GZ4/cancel",
+      "rel": "cancel",
+      "method": "POST"
+    },
+    {
+      "href": "https://api.sandbox.paypal.com/v2/invoicing/invoices/INV2-SK36-GQBT-YYMS-6GZ4/remind",
+      "rel": "remind",
+      "method": "POST"
+    },
+    {
+      "href": "https://api.sandbox.paypal.com/v2/invoicing/invoices/INV2-SK36-GQBT-YYMS-6GZ4/payments",
+      "rel": "record-payment",
+      "method": "POST"
+    },
+    {
+      "href": "https://api.sandbox.paypal.com/v2/invoicing/invoices/INV2-SK36-GQBT-YYMS-6GZ4/generate-qr-code",
+      "rel": "qr-code",
+      "method": "GET"
+    }
+  ],
+  "unilateral": false,
+  "settings": {}
+}

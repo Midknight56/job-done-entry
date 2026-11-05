@@ -1,0 +1,127 @@
+{
+  "id": "INV2-A27L-Q9E8-WPWM-PMYP",
+  "status": "MARKED_AS_PAID",
+  "detail": {
+    "reference": "dave-1264fcf5",
+    "currency_code": "USD",
+    "note": "Leak repair.",
+    "category_code": "SHIPPABLE",
+    "invoice_number": "0003",
+    "invoice_date": "2026-10-22",
+    "payment_term": {
+      "term_type": "DUE_ON_RECEIPT",
+      "due_date": "2026-10-22"
+    },
+    "viewed_by_recipient": false,
+    "group_draft": false,
+    "metadata": {
+      "create_time": "2026-10-23T01:25:22Z",
+      "last_update_time": "2026-10-23T01:25:24Z",
+      "first_sent_time": "2026-10-23T01:25:23Z",
+      "last_sent_time": "2026-10-23T01:25:23Z",
+      "created_by_flow": "REGULAR_SINGLE",
+      "recipient_view_url": "https://www.sandbox.paypal.com/invoice/p/#A27LQ9E8WPWMPMYP",
+      "invoicer_view_url": "https://www.sandbox.paypal.com/invoice/details/INV2-A27L-Q9E8-WPWM-PMYP",
+      "caller_type": "API_V2_INVOICE",
+      "spam_info": {}
+    },
+    "archived": false
+  },
+  "invoicer": {
+    "business_name": "Elm Street Plumbing (demo)",
+    "email_address": "merchant@example.com"
+  },
+  "primary_recipients": [
+    {
+      "billing_info": {
+        "name": {
+          "given_name": "Dave",
+          "surname": "Chen",
+          "full_name": "Dave Chen"
+        },
+        "email_address": "dave@example.com"
+      }
+    }
+  ],
+  "items": [
+    {
+      "id": "ITEM-24716155R1964982U",
+      "name": "Leak repair",
+      "quantity": "1",
+      "unit_amount": {
+        "currency_code": "USD",
+        "value": "120.00"
+      },
+      "item_date": "2026-10-22",
+      "unit_of_measure": "AMOUNT"
+    }
+  ],
+  "configuration": {
+    "tax_calculated_after_discount": false,
+    "tax_inclusive": false,
+    "allow_tip": false,
+    "allow_only_pay_by_bank": false,
+    "allow_vba_payments": false,
+    "save_item_for_future": true,
+    "template_id": "TEMP-8NW21802Y7590334W"
+  },
+  "amount": {
+    "breakdown": {
+      "item_total": {
+        "currency_code": "USD",
+        "value": "120.00"
+      },
+      "discount": {
+        "invoice_discount": {
+          "amount": {
+            "currency_code": "USD",
+            "value": "0.00"
+          }
+        },
+        "item_discount": {
+          "currency_code": "USD",
+          "value": "0.00"
+        }
+      },
+      "tax_total": {
+        "currency_code": "USD",
+        "value": "0.00"
+      }
+    },
+    "currency_code": "USD",
+    "value": "120.00"
+  },
+  "due_amount": {
+    "currency_code": "USD",
+    "value": "0.00"
+  },
+  "payments": {
+    "paid_amount": {
+      "currency_code": "USD",
+      "value": "120.00"
+    },
+    "transactions": [
+      {
+        "type": "EXTERNAL",
+        "payment_id": "EXTR-2YL43882BC694622C",
+        "payment_date": "2026-10-22",
+        "payment_date_time": "2026-10-22T00:00:00Z",
+        "method": "CASH",
+        "note": "Paid cash on site.",
+        "amount": {
+          "currency_code": "USD",
+          "value": "120.00"
+        }
+      }
+    ]
+  },
+  "links": [
+    {
+      "href": "https://api.sandbox.paypal.com/v2/invoicing/invoices/INV2-A27L-Q9E8-WPWM-PMYP",
+      "rel": "self",
+      "method": "GET"
+    }
+  ],
+  "unilateral": false,
+  "settings": {}
+}

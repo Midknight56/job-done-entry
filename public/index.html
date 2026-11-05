@@ -1,0 +1,55 @@
+<!-- Main phone interface and activity panel. -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Job Done</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="layout">
+      <section class="phone" aria-label="Job Done app">
+        <header class="top">
+          <a class="brand" href="./index.html">Job Done</a>
+          <div class="header-actions">
+            <button id="panelToggle" class="panel-toggle">Behind the scenes</button>
+            <a class="mobile-about" href="./about.html">About</a>
+          </div>
+        </header>
+        <div id="replayBar" class="replay" hidden>Recorded model output. Today's free AI budget is used up.</div>
+        <nav id="tabs" class="tabs" role="tablist" aria-label="Main navigation">
+          <button role="tab" data-tab="today" class="active">Today</button>
+          <button role="tab" data-tab="calendar">Calendar</button>
+          <button role="tab" data-tab="owed">Owed</button>
+          <button role="tab" data-tab="settings">Settings</button>
+        </nav>
+        <div class="phone-content">
+          <div id="calendarHost" class="calendar-host" hidden></div>
+          <div id="screen" class="screen" tabindex="0"></div>
+        </div>
+        <div class="talk">
+          <button id="talk" class="talk-button" aria-label="Hold to talk">
+            <span>Hold to talk</span>
+            <small id="recordTime"></small>
+          </button>
+          <div class="entry">
+            <textarea id="say" rows="2" aria-label="Describe the job" placeholder="Say what you did"></textarea>
+            <button id="sendText" aria-label="Send text">&#8594;</button>
+          </div>
+        </div>
+        <div id="sheet" class="sheet" hidden></div>
+        <div id="mobilePanel" class="mobile-panel" hidden>
+          <button id="closePanel" class="close-panel">Close</button>
+          <div id="panelMobile"></div>
+        </div>
+      </section>
+      <aside class="side-panel">
+        <h2>Behind the scenes</h2>
+        <div id="panel"></div>
+        <a href="./about.html">About Job Done</a>
+      </aside>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

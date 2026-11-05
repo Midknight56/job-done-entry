@@ -1,0 +1,13 @@
+# Copy to .dev.vars and fill in your own PayPal sandbox app's values.
+# PayPal sandbox app client id.
+PAYPAL_CLIENT_ID=
+# PayPal sandbox app client secret.
+PAYPAL_CLIENT_SECRET=
+# PayPal sandbox webhook id for /webhooks/paypal.
+PAYPAL_WEBHOOK_ID=
+# Email address of the sandbox buyer.
+PAYPAL_BUYER_EMAIL=
+# Salt used to hash visitor addresses for AI limits.
+IP_SALT=
+# 1 lets `npm run dev:local` answer the demo lines with a stand in for the model (localhost only, no AI used).
+MODEL_STUB=1

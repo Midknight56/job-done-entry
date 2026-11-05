@@ -1,0 +1,54 @@
+.customer-view {
+  max-width: 440px;
+  margin: 24px auto;
+  padding: 12px;
+}
+.customer-view .card {
+  padding: 24px 20px;
+  text-align: center;
+}
+.customer-view h2 {
+  font-size: 22px;
+  overflow-wrap: anywhere;
+}
+.customer-view .money {
+  font-size: clamp(44px, 15vw, 64px);
+  line-height: 1.1;
+  font-weight: 750;
+  margin: 14px 0 20px;
+}
+.customer-view .qr {
+  width: min(300px, 100%);
+  height: auto;
+  aspect-ratio: 1;
+  margin: 18px auto;
+  image-rendering: pixelated;
+}
+.customer-view .shared-invoice {
+  margin: 18px auto;
+}
+.customer-view .pay-status {
+  display: table;
+  margin: 18px auto 0;
+  padding: 8px 16px;
+  border-radius: 99px;
+  font-size: 16px;
+  font-weight: 650;
+}
+.customer-view .waiting-status {
+  background: var(--neutral-tag);
+  color: var(--muted);
+}
+.customer-view .paid-status {
+  background: var(--success-bg);
+  color: var(--success-ink);
+}
+@media (max-width: 380px) {
+  .customer-view {
+    margin: 8px auto;
+    padding: 10px;
+  }
+  .customer-view .card {
+    padding: 20px 14px;
+  }
+}

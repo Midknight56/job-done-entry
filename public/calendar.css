@@ -1,0 +1,133 @@
+.calendar-host .jd-state-booked {
+  --jd-state: var(--booked);
+}
+
+.calendar-host .jd-state-sent {
+  --jd-state: var(--sent);
+}
+
+.calendar-host .jd-state-paid {
+  --jd-state: var(--paid);
+}
+
+.calendar-host .jd-state-late {
+  --jd-state: var(--late);
+}
+
+.calendar-host .jd-state-held {
+  --jd-state: var(--held);
+}
+
+.calendar-host .jd-state-offered {
+  --jd-state: var(--held);
+}
+
+.calendar-host .jd-state-released {
+  --jd-state: var(--released);
+  opacity: 0.5;
+}
+
+.calendar-host .jd-state-booked,
+.calendar-host .jd-state-sent,
+.calendar-host .jd-state-paid,
+.calendar-host .jd-state-late,
+.calendar-host .jd-state-held,
+.calendar-host .jd-state-offered,
+.calendar-host .jd-state-released {
+  --b-primary: var(--jd-state) !important;
+  transition: background-color 0.3s, border-color 0.3s;
+}
+
+.calendar-host .jd-state-held .b-cal-event {
+  border: 2px dashed var(--held);
+}
+
+.calendar-host .jd-state-offered .b-cal-event {
+  border: 2px solid var(--held);
+  background-color: var(--white);
+}
+
+.calendar-host .jd-state-released .jd-summary {
+  text-decoration: line-through;
+}
+
+.calendar-host [data-job-id] {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.calendar-host [data-job-id] > * {
+  flex: none;
+  display: block;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 15px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.calendar-host [data-job-id] .jd-hold {
+  display: block;
+  color: var(--held-ink);
+  font-size: 11px;
+  line-height: 13px;
+}
+
+.calendar-host .b-day-view .b-cal-event-desc {
+  flex-shrink: 0;
+}
+
+.calendar-host {
+  container-type: inline-size;
+}
+
+@container (max-width: 600px) {
+  .calendar-host .b-calendar-view-desc,
+  .calendar-host .b-top-toolbar [data-ref="spacer"] {
+    display: none;
+  }
+
+  .calendar-host .b-calendar .b-top-toolbar .b-cal-nav-item {
+    flex: 0 0 32px;
+    min-width: 32px;
+    padding-inline: 0;
+    margin-inline: 0;
+  }
+
+  .calendar-host .b-top-toolbar .b-mode-selector {
+    flex: none;
+    margin-inline-start: auto;
+  }
+
+  .calendar-host .b-top-toolbar .b-button-padded {
+    padding-inline: 9px;
+    font-size: 14px;
+  }
+}
+
+/* A reminder PayPal will send by itself: faint, dashed, not a job. */
+.calendar-host .jd-reminder {
+  --b-primary: var(--sent) !important;
+  opacity: 0.8;
+}
+
+.calendar-host [data-reminder-of] {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.calendar-host .jd-reminder .b-cal-event {
+  border: 1px dashed var(--sent);
+  background-color: var(--white);
+}
+
+.calendar-host .jd-state-part { --jd-state: var(--sent); --b-primary: var(--sent) !important; }
+.calendar-host .jd-state-completed { --jd-state: var(--booked); --b-primary: var(--booked) !important; }
+.calendar-host .jd-state-refunded,
+.calendar-host .jd-state-cancelled { --jd-state: var(--released); --b-primary: var(--released) !important; }

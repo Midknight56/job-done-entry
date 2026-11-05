@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS ai_calls (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  app TEXT NOT NULL,
+  day TEXT NOT NULL,
+  neurons REAL NOT NULL,
+  at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS ai_calls_day_app_idx ON ai_calls (day, app);

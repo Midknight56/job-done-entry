@@ -1,0 +1,15 @@
+node_modules/
+.dev.vars
+public/vendor/
+.wrangler/
+test-results/
+capture/
+playwright-report/
+coverage/
+tools/out/
+__pycache__/
+.deploy.local.json
+wrangler.deploy.jsonc
+wrangler.dev.jsonc
+.helper/
+coverage/

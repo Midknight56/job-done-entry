@@ -1,0 +1,31 @@
+{
+  "name": "job-done",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "postinstall": "node scripts/vendor-bryntum.mjs",
+    "dev": "wrangler dev",
+    "dev:ledger": "node scripts/deploy.mjs --dev",
+    "deploy": "node scripts/deploy.mjs",
+    "test": "vitest run tests/unit",
+    "test:live": "vitest run tests/live",
+    "e2e": "playwright test",
+    "vendor": "node scripts/vendor-bryntum.mjs",
+    "check": "tsc --noEmit -p jsconfig.json",
+    "dev:local": "wrangler dev -c wrangler.local.jsonc --ip 127.0.0.1 --port 8797",
+    "coverage": "vitest run tests/unit --coverage --coverage.include=src/** --coverage.reporter=text"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261023.1",
+    "@playwright/test": "1.64.1",
+    "@vitest/coverage-v8": "^5.0.5",
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.5",
+    "wrangler": "^4.152.0"
+  },
+  "dependencies": {
+    "@bryntum/calendar": "npm:@bryntum/calendar-trial@7.3.7"
+  }
+}

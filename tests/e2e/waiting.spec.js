@@ -1,0 +1,57 @@
+import { test, expect } from '@playwright/test'
+import { newDemo } from './demo.js'
+
+test.beforeEach(async ({ page }) => {
+  await page.goto('/?calendar=fallback')
+  await newDemo(page, 0)
+  await page.reload()
+})
+
+test('adds and removes a morning waiting job on Calendar', async ({ page }) => {
+  await page.getByRole('tab', { name: 'Calendar' }).click()
+  const list = page.getByRole('region', { name: 'Waiting list', exact: true })
+  await list.getByLabel('Customer', { exact: true }).selectOption('c3')
+  await list.getByLabel('Summary', { exact: true }).fill('Gutter clean')
+  await list.getByLabel('Hours', { exact: true }).selectOption('2')
+  await list.getByLabel('When free', { exact: true }).selectOption('mornings')
+  await list.getByRole('button', { name: 'Add', exact: true }).click()
+  const row = list.locator('[data-waiting-id]').filter({ hasText: 'Sam Gutter clean 2 h Mornings' })
+  await expect(row).toBeVisible()
+  await row.getByRole('button', { name: 'Remove', exact: true }).click()
+  await expect(row).toHaveCount(0)
+})
+
+test('adds a spoken waiting proposal only after its button is tapped', async ({ page }) => {
+  const before = await (await page.request.get('/api/state')).json()
+  await page.locator('#say').fill('Put Dave on the waiting list for a two hour shower job, mornings')
+  await page.locator('#sendText').click()
+  await expect(page.getByRole('heading', { name: 'Add to waiting list', exact: true })).toBeVisible()
+  let state = await (await page.request.get('/api/state')).json()
+  expect(state.ws.waiting).toEqual(['j5'])
+  await page.getByRole('button', { name: 'Add to waiting list', exact: true }).click()
+  await page.getByRole('tab', { name: 'Calendar' }).click()
+  await expect(page.getByRole('region', { name: 'Waiting list', exact: true })).toContainText('Dave Shower job 2 h Mornings')
+  state = await (await page.request.get('/api/state')).json()
+  expect(state.ws.drafts).toEqual(before.ws.drafts)
+})
+
+test('keeps waiting form values through polls and shows a 422 in the section', async ({ page }) => {
+  await page.getByRole('tab', { name: 'Calendar' }).click()
+  const list = page.getByRole('region', { name: 'Waiting list', exact: true })
+  await list.getByLabel('Customer', { exact: true }).selectOption('c3')
+  await list.getByLabel('Hours', { exact: true }).selectOption('2')
+  await list.getByLabel('When free', { exact: true }).selectOption('mornings')
+  await list.getByLabel('Summary', { exact: true }).fill('Gutter clean')
+  await page.request.post('/api/waiting', { data: { customerId: 'c2', summary: 'Other job', hours: 1, free: [1, 3] } })
+  await expect(list).toContainText('Dave Other job 1 h Mon, Wed')
+  await expect(list.getByLabel('Customer', { exact: true })).toHaveValue('c3')
+  await expect(list.getByLabel('Hours', { exact: true })).toHaveValue('2')
+  await expect(list.getByLabel('When free', { exact: true })).toHaveValue('mornings')
+  await expect(list.getByLabel('Summary', { exact: true })).toBeFocused()
+  await expect(list.getByLabel('Summary', { exact: true })).toHaveValue('Gutter clean')
+  expect(await list.locator('button, input, select').evaluateAll((controls) => controls.every((control) => Boolean(control.dataset.keep)))).toBe(true)
+  await page.route('**/api/waiting', (route) => route.fulfill({ status: 422, contentType: 'application/json', body: JSON.stringify({ message: 'The waiting list is full.' }) }))
+  await list.getByRole('button', { name: 'Add', exact: true }).click()
+  await expect(list.getByRole('alert')).toHaveText('The waiting list is full.')
+  await expect(page.getByRole('tab', { name: 'Calendar' })).toHaveAttribute('aria-selected', 'true')
+})
