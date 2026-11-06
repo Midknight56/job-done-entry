@@ -1,8 +1,8 @@
 // @ts-check
 
-import { actualNeurons, MAX_INPUT_CHARS, MAX_OUTPUT_TOKENS, stepWorstCase, REQUEST_SUFFIX } from '../caps.js'
+import { actualNeurons, MAX_INPUT_CHARS, MAX_OUTPUT_TOKENS, stepWorstCase } from '../caps.js'
 
-export const MODEL = '@cf/qwen/qwen3-30b-a3b-fp8'
+export const MODEL = '@cf/ibm-granite/granite-4.0-h-micro'
 
 export class BudgetError extends Error {
   /** @param {'account'|'day'|'ip'|'ledger'} reason */
@@ -31,15 +31,14 @@ export async function runModel({ ai, budget, ipKey, day, messages, maxTokens = M
   const neurons = stepWorstCase(chars, maxTokens, messages.length)
   const charged = await budget.charge({ ipKey, day, neurons })
   if (charged.ok === false) throw new BudgetError(charged.reason)
-  const modelMessages = messages.map((message) => ({ ...message }))
-  for (let i = modelMessages.length - 1; i >= 0; i--) {
-    if (modelMessages[i].role === 'user') { modelMessages[i].content += REQUEST_SUFFIX; break }
-  }
-  const out = await ai.run(MODEL, { messages: modelMessages, max_tokens: Math.min(maxTokens, MAX_OUTPUT_TOKENS), temperature })
+  const out = await ai.run(MODEL, { messages, max_tokens: Math.min(maxTokens, MAX_OUTPUT_TOKENS), temperature })
   const actual = actualNeurons(out.usage)
   if (charged.id !== undefined && actual !== null && budget.settle) {
     try { await budget.settle({ id: charged.id, neurons: actual * 1.1 }) }
     catch { if (actual * 1.1 > neurons) throw new BudgetError('ledger') }
   }
-  return { text: cleanReply(out.response), neurons, actual, usage: out.usage || null }
+  const reply = typeof out.response === 'string' || (out.response !== null && typeof out.response === 'object')
+    ? out.response
+    : out.choices?.[0]?.message?.content
+  return { text: cleanReply(reply), neurons, actual, usage: out.usage || null }
 }

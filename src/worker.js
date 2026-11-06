@@ -7,7 +7,7 @@ import { createPayPal } from './paypal/client.js'
 import { getInvoice, PayPalError, readAfterDueReminder, reminderPlan, remindInvoice } from './paypal/invoices.js'
 import { handleWebhook } from './paypal/webhooks.js'
 import { createBudget, d1Ledger } from './ai/budget.js'
-import { runModel, BudgetError } from './ai/model.js'
+import { runModel, BudgetError, MODEL } from './ai/model.js'
 import { transcribe } from './ai/whisper.js'
 import { runTurn } from './agent/loop.js'
 import { replayLines, replayModel } from './agent/replay.js'
@@ -32,7 +32,7 @@ const COOKIE = 'jd_ws'
 const DAY_TTL = 3 * 86_400
 const IP_TTL = 2 * 86_400
 const MAX_JSON_BYTES = 1_048_576
-/** The most one agent turn can cost (three model calls), checked before a live turn starts. */
+/** The most one agent turn can cost (four model calls), checked before a live turn starts. */
 const TURN_WORST = caps.MAX_MODEL_CALLS * caps.stepWorstCase(caps.MAX_INPUT_CHARS, caps.MAX_OUTPUT_TOKENS)
 /** Per isolate: when each watched invoice was last read from PayPal, so an open QR sheet reads it every 5 s at most. */
 const lastWatch = new Map()
@@ -448,7 +448,7 @@ export async function api(request, env, ctx, url) {
         replayed = true
       }
       for (const s of turn.steps) {
-        if (s.kind === 'model') pushPanel(ws, { kind: 'model', at: now, method: 'AI', path: stub ? 'development stub' : replayed ? 'recorded output' : 'qwen3-30b-a3b-fp8', status: 200, ms: s.ms, neurons: round(s.neurons) })
+        if (s.kind === 'model') pushPanel(ws, { kind: 'model', at: now, method: 'AI', path: stub ? 'development stub' : replayed ? 'recorded output' : MODEL.slice(MODEL.lastIndexOf('/') + 1), status: 200, ms: s.ms, neurons: round(s.neurons) })
         else if (s.kind === 'tool') pushPanel(ws, { kind: 'tool', at: now, path: s.name, status: s.ok ? 200 : 422, ms: s.ms })
         else if (s.kind === 'guard') pushPanel(ws, { kind: 'guard', at: now, path: 'drop rule', status: s.result.startsWith('dropped') ? 422 : 200, text: s.result })
       }

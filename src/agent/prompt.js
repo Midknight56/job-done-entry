@@ -9,6 +9,7 @@ Every reply is ONE JSON object and nothing else, in one of two shapes:
 {"calls": [{"tool": "<name>", "args": {...}}]}
 {"final": {...}}
 Your first reply is always "calls". After the tool results come back, your reply is always "final".
+An invoice always needs price_lines: put find_customer AND price_lines in the same first "calls" reply, with the call out, the labour hours said and each part with the cost said. The lines always start with {"kind": "callout"}. A booking always needs find_slots: put find_customer AND find_slots in the same first "calls" reply. Send only the "calls" object first; send "final" only after the tool results come back.
 
 Tools (all read only):
 - find_customer {"name": string, "place_hint": string} -> customers with id, address, history.

@@ -9,9 +9,23 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { checkModels, MODEL_IDS } from './check-models.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const dev = process.argv.includes('--dev')
+if (process.env.SKIP_MODEL_CHECK === '1') {
+  console.warn('Warning: skipping model retirement check')
+} else {
+  const problems = await checkModels()
+  for (const id of MODEL_IDS) {
+    const problem = problems.find(entry => entry.startsWith(`${id}:`))
+    console.log(problem ? `problem ${problem}` : `ok ${id}`)
+  }
+  if (problems.length) {
+    process.exitCode = 1
+    process.exit()
+  }
+}
 const local = JSON.parse(readFileSync(join(root, '.deploy.local.json'), 'utf8'))
 const d1 = process.env.HACKATHON_LEDGER_D1_ID
 if (!local.kvId || !d1) throw new Error('need kvId in .deploy.local.json and HACKATHON_LEDGER_D1_ID in the environment')

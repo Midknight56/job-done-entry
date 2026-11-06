@@ -42,7 +42,12 @@ row('new demo', made.status === 200 && dave?.status === 'SENT', `HTTP ${made.sta
 
 const maria = await say('Kitchen tap for Maria at 14 Elm, hour and a half, the tap was 89, she wants the bathroom one done next week.')
 const p = maria.json.proposal
-row('Maria draft', p?.kind === 'invoice' && p.priced.total === '282.42', `HTTP ${maria.status}; ${p?.kind} total ${p?.priced?.total}; sources ${p?.priced?.lines.map((l) => l.source).join(', ')}`)
+row('Maria draft', p?.kind === 'invoice' && p.priced.total === '282.42', `HTTP ${maria.status}; ${p?.kind} total ${p?.priced?.total}; sources ${p?.priced?.lines.map((l) => l.source).join(', ')}${p?.message ? `; ${p.message}` : ''}`)
+
+const visitEnd = Math.floor(Date.now() / 300_000) * 300_000
+const visitStart = visitEnd - 90 * 60_000
+const visit = await call('POST', `/api/drafts/${p.draftId}/visit`, { start: new Date(visitStart).toISOString(), end: new Date(visitEnd).toISOString() })
+row('Maria visit', visit.status === 200 && Boolean(visit.json.draft?.jobId), `HTTP ${visit.status}; job ${visit.json.draft?.jobId}; ${visit.json.message || ''}`)
 
 const sent = await call('POST', `/api/drafts/${p.draftId}/send`)
 const inv = sent.json.state?.ws.invoices[sent.json.invoiceId]
@@ -55,14 +60,14 @@ row('repeat tap', again.json.invoiceId === sent.json.invoiceId, `HTTP ${again.st
 
 const book = await say('Book the bathroom tap for Maria next week.')
 const b = book.json.proposal
-row('booking', b?.kind === 'booking' && b.deposit === '50.00', `HTTP ${book.status}; ${b?.slot?.label}; deposit ${b?.deposit}; hold ${b?.holdMinutes} min`)
+row('booking', b?.kind === 'booking' && b.deposit === '50.00', `HTTP ${book.status}; ${b?.slot?.label}; deposit ${b?.deposit}; hold ${b?.holdMinutes} min${book.json?.message ? `; ${book.json.message}` : ''}`)
 const dep = await call('POST', `/api/drafts/${b.draftId}/send`)
 const held = jobOf(dep.json.state, b.jobId)
 row('deposit sent', dep.status === 200 && held?.state === 'held', `HTTP ${dep.status}; ${dep.json.invoiceId}; job ${held?.state}`)
 
 const cash = await say('Dave paid cash, 108.')
 const c = cash.json.proposal
-row('cash proposal', c?.kind === 'cash' && c.amount === '108.00', `HTTP ${cash.status}; ${c?.kind} ${c?.amount} on ${c?.invoiceId}`)
+row('cash proposal', c?.kind === 'cash' && c.amount === '108.00', `HTTP ${cash.status}; ${c?.kind} ${c?.amount} on ${c?.invoiceId}${cash.json?.message ? `; ${cash.json.message}` : ''}`)
 const paid = await call('POST', `/api/invoices/${c.invoiceId}/cash`, { amount: c.amount })
 const daveAfter = paid.json.state?.ws.invoices[c.invoiceId]
 row('cash recorded', paid.status === 200 && daveAfter?.status === 'MARKED_AS_PAID', `HTTP ${paid.status}; ${daveAfter?.status}; due ${daveAfter?.due}; cash ${daveAfter?.cash}`)
@@ -70,15 +75,15 @@ const over = await call('POST', `/api/invoices/${c.invoiceId}/cash`, { amount: '
 row('cash on a paid invoice refused', over.status === 422, `HTTP ${over.status}; ${over.json?.message}`)
 
 const owed = await say('What am I owed?')
-row('owed', owed.json.proposal?.kind === 'answer', `HTTP ${owed.status}; "${owed.json.proposal?.text}"`)
+row('owed', owed.json.proposal?.kind === 'answer', `HTTP ${owed.status}; "${owed.json.proposal?.text}"${owed.json?.message ? `; ${owed.json.message}` : ''}`)
 
 const bad = await say('Kitchen tap for Maria, two hours, the tap was 89.')
 const badLines = bad.json.proposal?.priced?.lines?.map((l) => `${l.name} ${l.quantity}`).join(', ')
 // Labour is priced only for the time that was said: any other hours are refused, never priced.
-row('no labour line with hours that were not said', bad.json.proposal?.kind === 'invoice' && !bad.json.proposal.priced.lines.some((l) => l.name === 'Labour' && l.quantity !== '2'), `HTTP ${bad.status}; ${badLines}`)
+row('no labour line with hours that were not said', bad.json.proposal?.kind === 'invoice' && !bad.json.proposal.priced.lines.some((l) => l.name === 'Labour' && l.quantity !== '2'), `HTTP ${bad.status}; ${badLines}${bad.json?.message ? `; ${bad.json.message}` : ''}`)
 
 const stranger = await say('Gutter clean for Bob, an hour.')
-row('unknown customer', stranger.json.proposal?.kind === 'new_customer', `HTTP ${stranger.status}; ${stranger.json.proposal?.kind} ${stranger.json.proposal?.name}`)
+row('unknown customer', stranger.json.proposal?.kind === 'new_customer', `HTTP ${stranger.status}; ${stranger.json.proposal?.kind} ${stranger.json.proposal?.name}${stranger.json?.message ? `; ${stranger.json.message}` : ''}`)
 
 if (!process.argv.includes('--no-wait')) {
   console.log('waiting 125 s for the 2 minute hold to run out')

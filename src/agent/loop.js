@@ -19,17 +19,61 @@ const MAX_CALLS_PER_STEP = 6
 
 /** @param {string} text */
 export function parseReply(text) {
-  const start = text.indexOf('{')
-  const end = text.lastIndexOf('}')
-  if (start < 0 || end <= start) return null
-  try {
-    const j = JSON.parse(text.slice(start, end + 1))
-    if (j && Array.isArray(j.calls) && j.calls.length > 0) return { calls: j.calls }
-    if (j && j.final && typeof j.final === 'object') return { final: j.final }
-    // Seen live on 23 Oct 2026: the model sometimes sends the proposal without its {"final": ...} wrapper.
-    if (j && typeof j.kind === 'string') return { final: j }
-  } catch { /* fall through */ }
+  const values = topLevelValues(text)
+  const parsed = values.map((value) => {
+    try { return { valid: true, value: JSON.parse(value) } } catch { return { valid: false, value: null } }
+  })
+  const first = parsed.find((entry) => entry.valid)?.value
+  if (first && !Array.isArray(first) && typeof first === 'object') {
+    if (Array.isArray(first.calls) && first.calls.length > 0) return { calls: first.calls }
+    if (typeof first.tool === 'string') {
+      const firstIndex = parsed.findIndex((entry) => entry.valid)
+      return { calls: parsed.slice(firstIndex).flatMap((entry) => {
+        const value = entry.value
+        return value && !Array.isArray(value) && typeof value === 'object' && typeof value.tool === 'string' ? [value] : []
+      }) }
+    }
+    if (first.final && typeof first.final === 'object') return { final: first.final }
+    if (typeof first.kind === 'string') return { final: first }
+  }
+  if (Array.isArray(first) && first.length > 0 && first.every((call) => call && typeof call.tool === 'string')) return { calls: first }
   return null
+}
+
+/** @param {string} text */
+function topLevelValues(text) {
+  /** @type {string[]} */
+  const values = []
+  /** @type {Array<'{' | '['>} */
+  let stack = []
+  let start = -1
+  let inString = false
+  let escaped = false
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]
+    if (start < 0) {
+      if (c === '{' || c === '[') { start = i; stack = [c] }
+      continue
+    }
+    if (inString) {
+      if (escaped) escaped = false
+      else if (c === '\\') escaped = true
+      else if (c === '"') inString = false
+      continue
+    }
+    if (c === '"') inString = true
+    else if (c === '{' || c === '[') stack.push(c)
+    else if (c === '}' || c === ']') {
+      const expected = c === '}' ? '{' : '['
+      if (stack.at(-1) !== expected) { start = -1; stack = []; continue }
+      stack.pop()
+      if (stack.length === 0) {
+        values.push(text.slice(start, i + 1))
+        start = -1
+      }
+    }
+  }
+  return values
 }
 
 /**
@@ -87,9 +131,10 @@ export async function runTurn(ws, transcript, { callModel, now, api }) {
 
   let reply = await ask(false)
   if (!reply) return fail(DID_NOT_CATCH)
-  if (reply.calls) {
+  /** @param {any[]} requested */
+  async function runCalls(requested) {
     const out = []
-    for (const call of reply.calls.slice(0, MAX_CALLS_PER_STEP)) {
+    for (const call of requested.slice(0, MAX_CALLS_PER_STEP)) {
       const name = String(call?.tool || '')
       const t = Date.now()
       let result
@@ -101,22 +146,52 @@ export async function runTurn(ws, transcript, { callModel, now, api }) {
       results.push({ tool: name, result })
       out.push({ tool: name, result })
     }
-    if (results.some((r) => r.tool === 'find_slots' && r.result.needsDate)) return fail('Which day? Say one day, like tomorrow or Thursday.')
-    if (results.some((r) => r.result.needsDuration)) return fail('How long is the visit? Say one length in hours and minutes.')
-    if (results.some((r) => r.result.needsPartPrice)) return fail('What did the part cost? Say the part name and price.')
+    if (results.some((r) => r.tool === 'find_slots' && r.result.needsDate)) return { failure: 'Which day? Say one day, like tomorrow or Thursday.' }
+    if (results.some((r) => r.result.needsDuration)) return { failure: 'How long is the visit? Say one length in hours and minutes.' }
+    if (results.some((r) => r.result.needsPartPrice)) return { failure: 'What did the part cost? Say the part name and price.' }
     const candidates = results.filter(r => r.tool === 'find_customer').flatMap(r => r.result.matches || [])
-    if (new Set(candidates.map(c => c.id)).size > 1) return fail(`Which customer? Say the full name and address. ${candidates.map(c => `${c.name}, ${c.address}`).join('; ')}.`)
-    messages.push({ role: 'user', content: `Tool results: ${JSON.stringify(out)}\nNow reply with {"final": {...}} only.` })
+    if (new Set(candidates.map(c => c.id)).size > 1) return { failure: `Which customer? Say the full name and address. ${candidates.map(c => `${c.name}, ${c.address}`).join('; ')}.` }
+    return { out }
+  }
+
+  if (reply.calls) {
+    const executed = await runCalls(reply.calls)
+    if (executed.failure) return fail(executed.failure)
+    messages.push({ role: 'user', content: `Tool results: ${JSON.stringify(executed.out)}\nNow reply with {"final": {...}} only.` })
     reply = await ask(true)
     if (!reply) return fail(DID_NOT_CATCH)
   }
 
-  const checked = checkFinal(reply.final, { results, transcript, stepMinutes: ws.settings.rateCard.billingStepMinutes })
-  if ('reason' in checked) {
+  if (reply.final.kind === 'booking') {
+    let latestSlots = results.filter((r) => r.tool === 'find_slots').at(-1)?.result
+    if (!latestSlots) {
+      // The small model sometimes skips find_slots; the tool reads only the words, so code can run it.
+      const executed = await runCalls([{ tool: 'find_slots', args: {} }])
+      if (executed.failure) return fail(executed.failure)
+      latestSlots = results.filter((r) => r.tool === 'find_slots').at(-1)?.result
+    }
+    const slots = latestSlots?.slots || []
+    if (slots.length && !slots.some((slot) => slot.id === reply.final.slot_id)) reply.final.slot_id = slots[0].id
+  }
+
+  let guardRetried = false
+  let checked = checkFinal(reply.final, { results, transcript, stepMinutes: ws.settings.rateCard.billingStepMinutes })
+  while ('reason' in checked) {
     steps.push({ kind: 'guard', result: `dropped: ${checked.reason}` })
     if (checked.reason === 'the cash amount was not said') return fail('How much cash was paid? Say one amount.')
-    return fail(`I could not back that up, so I dropped it (${checked.reason}). Try saying it again.`)
+    if (guardRetried || calls + 2 > MAX_MODEL_CALLS) return fail(`I could not back that up, so I dropped it (${checked.reason}). Try saying it again.`)
+    guardRetried = true
+    messages.push({ role: 'user', content: `That was dropped: ${checked.reason}. Look at what was said again and reply with {"calls": [...]} only.` })
+    const retryCalls = await ask(false)
+    if (!retryCalls?.calls) return fail(DID_NOT_CATCH)
+    const executed = await runCalls(retryCalls.calls)
+    if (executed.failure) return fail(executed.failure)
+    messages.push({ role: 'user', content: `Tool results: ${JSON.stringify(executed.out)}\nNow reply with {"final": {...}} only.` })
+    reply = await ask(true)
+    if (!reply) return fail(DID_NOT_CATCH)
+    checked = checkFinal(reply.final, { results, transcript, stepMinutes: ws.settings.rateCard.billingStepMinutes })
   }
+
   steps.push({ kind: 'guard', result: checked.removed?.length ? `passed, ${checked.removed.length} sentence removed` : 'passed' })
   const proposal = build(ws, checked.proposal, { results, lineInputs, now, transcript })
   const rateChanges = offerRates(ws, transcript, now, proposal.kind === 'invoice' ? proposal.draftId : undefined)

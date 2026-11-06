@@ -295,6 +295,18 @@ describe('pricing and model edge behavior', () => {
     expect(cleanReply('old thought</think> final')).toBe('final')
   })
 
+  it('reads Granite chat choices and accounts for its token usage', async () => {
+    const content = '{"ok":true}'
+    const usage = { prompt_tokens: 1145, completion_tokens: 68, neurons: 2.4559 }
+    const out = await runModel({
+      ai: { run: async () => ({ choices: [{ message: { role: 'assistant', content }, finish_reason: 'stop' }], usage }) },
+      budget: { charge: async () => ({ ok: true }) }, ipKey: 'i', day: 'd', messages: [{ role: 'user', content: 'hi' }]
+    })
+    expect(out.text).toBe(content)
+    expect(out.actual).toBe(1145 * 1542 / 1e6 + 68 * 10158 / 1e6)
+    expect(out.usage).toEqual(usage)
+  })
+
   it('returns the configured failed budget reason without calling the model', async () => {
     let called = false
     await expect(runModel({ ai: { run: async () => (called = true, {}) }, budget: { charge: async () => ({ ok: false, reason: 'day' }) }, ipKey: 'i', day: 'd', messages: [{ role: 'user', content: 'hi' }] })).rejects.toMatchObject({ reason: 'day' })

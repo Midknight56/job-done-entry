@@ -9,6 +9,7 @@
     "dev": "wrangler dev",
     "dev:ledger": "node scripts/deploy.mjs --dev",
     "deploy": "node scripts/deploy.mjs",
+    "check:models": "node scripts/check-models.mjs",
     "test": "vitest run tests/unit",
     "test:live": "vitest run tests/live",
     "e2e": "playwright test",

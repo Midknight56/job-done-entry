@@ -304,6 +304,7 @@ describe('replay handles missing samples and malformed recorded tool output', ()
 describe('prompt text sets the model contract and preserves the transcript', () => {
   it('describes the available read only tools and safely quotes user text', () => {
     expect(SYSTEM_PROMPT).toContain('waiting_list')
+    expect(SYSTEM_PROMPT).toContain('The lines always start with {"kind": "callout"}.')
     expect(userMessage({ business: 'Plumbing', today: 'Wednesday 2026', transcript: 'I said "hello"' })).toContain('The tradesperson said: "I said \'hello\'"')
   })
 })

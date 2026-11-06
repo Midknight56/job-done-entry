@@ -6,17 +6,17 @@ import { runModel } from '../../src/ai/model.js'
 const DAY = '2026-10-26'
 
 describe('the reservation arithmetic', () => {
-  it('reserves 34.81975 neurons for a full input step and at most 23.32 for a 30 s clip', () => {
-    expect(stepWorstCase(MAX_INPUT_CHARS, MAX_OUTPUT_TOKENS)).toBeCloseTo(34.81975, 6)
+  it('reserves 11.592408 neurons for a full input step and at most 23.32 for a 30 s clip', () => {
+    expect(stepWorstCase(MAX_INPUT_CHARS, MAX_OUTPUT_TOKENS)).toBeCloseTo(11.592408, 6)
     expect(audioWorstCase(30)).toBeCloseTo(23.32, 1)
   })
 
-  it.each([[3536, 500, 6], [3537, 54, 2], [0, 9999, 1]])('reserves characters, formatting, suffix and capped output: %s / %s / %s', (chars, maxTokens, messages) => {
+  it.each([[3536, 500, 6], [3537, 54, 2], [0, 9999, 1]])('reserves characters, formatting and capped output: %s / %s / %s', (chars, maxTokens, messages) => {
     expect(CHARS_PER_TOKEN_RESERVE).toBe(2.5)
     expect(CHAT_MESSAGE_TOKENS).toBe(32)
     expect(CHAT_REPLY_TOKENS).toBe(32)
-    const tokens = Math.ceil(chars / 2.5) + messages * 32 + 32 + 10
-    expect(stepWorstCase(chars, maxTokens, messages)).toBeCloseTo(tokens * 4625 / 1e6 + Math.min(maxTokens, 500) * 30475 / 1e6, 8)
+    const tokens = Math.ceil(chars / 2.5) + messages * 32 + 32
+    expect(stepWorstCase(chars, maxTokens, messages)).toBeCloseTo(tokens * 1542 / 1e6 + Math.min(maxTokens, 500) * 10158 / 1e6, 8)
   })
 
   it('the caps keep the app inside its share and the share inside the free day', () => {

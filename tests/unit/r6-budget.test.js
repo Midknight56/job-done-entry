@@ -12,7 +12,7 @@ import { memoryKV } from './memory-kv.js'
 const day = '2026-11-05'
 afterEach(() => vi.restoreAllMocks())
 
-it('allows two full 12-call demo runs of typical requests and refuses the third run before its last call', async () => {
+it('allows six full 12-call demo runs of typical requests and refuses the seventh at its first call', async () => {
   const ledger = memoryLedger(), perIp = memoryCounter()
   const budget = createBudget({ ledger, perIp, app: 'job-done' })
   const ai = { run: vi.fn(async () => ({ response: '{}' })) }
@@ -20,7 +20,7 @@ it('allows two full 12-call demo runs of typical requests and refuses the third 
     .map((role, index) => ({ role, content: 'x'.repeat(index < 5 ? 590 : 586) }))
 
   expect(messages.reduce((sum, message) => sum + message.content.length, 0)).toBe(3536)
-  for (let run = 0; run < 2; run++) {
+  for (let run = 0; run < 6; run++) {
     for (let call = 0; call < 12; call++) {
       await runModel({ ai, budget, ipKey: 'visitor', day, messages, maxTokens: 500 })
     }
@@ -36,20 +36,20 @@ it('allows two full 12-call demo runs of typical requests and refuses the third 
     }
   }
   expect(refusedAt).toBe(0)
-  expect(ai.run).toHaveBeenCalledTimes(24)
-  expect(await perIp.get(`${'visitor'}:${day}`)).toBeCloseTo(548.739, 6)
+  expect(ai.run).toHaveBeenCalledTimes(72)
+  expect(await perIp.get(`${'visitor'}:${day}`)).toBeCloseTo(547.656336, 6)
 })
 
-it('R6 item 2 reserves JavaScript string lengths including message formatting and ten suffix tokens', async () => {
+it('reserves JavaScript string lengths and sends the user message unchanged', async () => {
   const ledger = memoryLedger(), perIp = memoryCounter()
   const budget = createBudget({ ledger, perIp, app: 'job-done' })
   const messages = [{ role: 'system', content: 'rules' }, { role: 'user', content: '漢😀'.repeat(1000) }]
   const chars = messages.reduce((sum, message) => sum + message.content.length, 0)
-  const expected = (Math.ceil(chars / 2.5) + 2 * 32 + 32 + 10) * 4625 / 1e6 + 500 * 30475 / 1e6
+  const expected = (Math.ceil(chars / 2.5) + 2 * 32 + 32) * 1542 / 1e6 + 500 * 10158 / 1e6
   const ai = { run: vi.fn(async (_id, input) => {
     expect(await ledger.dayTotal(day)).toBeCloseTo(expected, 8)
     expect(await perIp.get(`ip:${day}`)).toBeCloseTo(expected, 8)
-    expect(input.messages[1].content).toBe(messages[1].content + ' /no_think')
+    expect(input.messages[1].content).toBe(messages[1].content)
     return { response: '{}' }
   }) }
   await runModel({ ai, budget, ipKey: 'ip', day, messages })
@@ -62,7 +62,7 @@ it.each(['app', 'ip', 'account'])('R6 item 2 records excess on every counter and
   const target = cap === 'app' ? DAILY_NEURONS : cap === 'ip' ? PER_IP_NEURONS : ACCOUNT_NEURONS
   if (cap === 'account') await ledger.add(day, 'other', ACCOUNT_NEURONS - 100)
   const actual = cap === 'account' ? 100 : target
-  const charged = await budget.charge({ ipKey: 'ip', day, neurons: 24.4875 })
+  const charged = await budget.charge({ ipKey: 'ip', day, neurons: 5 })
   expect(charged.ok).toBe(true)
   await budget.settle({ id: charged.id, neurons: actual })
   expect(await ledger.dayTotal(day, 'job-done')).toBe(actual)
@@ -73,9 +73,9 @@ it.each(['app', 'ip', 'account'])('R6 item 2 records excess on every counter and
 it('R6 item 2 keeps a reported overage and serializes repeated settlements', async () => {
   const ledger = memoryLedger(), perIp = memoryCounter()
   const budget = createBudget({ ledger, perIp, app: 'job-done' })
-  const charged = await budget.charge({ ipKey: 'ip', day, neurons: 24.4875 })
+  const charged = await budget.charge({ ipKey: 'ip', day, neurons: 5 })
   const actual = actualNeurons({ prompt_tokens: 3000, completion_tokens: 500 })
-  expect(actual).toBe(29.1125)
+  expect(actual).toBeCloseTo(9.705, 8)
   await Promise.all([budget.settle({ id: charged.id, neurons: actual }), budget.settle({ id: charged.id, neurons: actual })])
   expect(await ledger.dayTotal(day)).toBe(actual)
   expect(await perIp.get(`ip:${day}`)).toBe(actual)
@@ -107,7 +107,7 @@ it('R6 item 2 keeps calls blocked if an overage cannot be settled', async () => 
 
 it('R6 item 2 includes more formatting for more messages', () => {
   expect(stepWorstCase(6000, 500, 6)).toBeGreaterThan(stepWorstCase(6000, 500, 1))
-  expect(stepWorstCase(6000, 500)).toBeCloseTo((2400 + 6 * 32 + 32 + 10) * 4625 / 1e6 + 500 * 30475 / 1e6, 8)
+  expect(stepWorstCase(6000, 500)).toBeCloseTo((2400 + 6 * 32 + 32) * 1542 / 1e6 + 500 * 10158 / 1e6, 8)
 })
 
 it('R6 item 2 records model-reported usage above the character reservation in the ledger and per IP counter', async () => {
@@ -150,7 +150,7 @@ it('R6 item 2 persists excess to both shared counters and uses recorded fallback
   const LEDGER = { prepare: sql => ({ bind: (...args) => ({ first: async () => sqlite.prepare(sql).get(...args), run: async () => sqlite.prepare(sql).run(...args) }) }) }
   const JOBDONE = memoryKV(), now = Date.now(), today = new Date(now).toISOString().slice(0, 10)
   await JOBDONE.put('ws:usage6', JSON.stringify(seedWorkspace({ id: 'usage6', now, tzOffsetMinutes: 0 })))
-  const usage = { prompt_tokens: 120000, completion_tokens: 500 }
+  const usage = { prompt_tokens: 400000, completion_tokens: 500 }
   const AI = { run: vi.fn(async () => ({ response: '{"final":{"kind":"answer","text":"Nothing is owed.","invoice_ids":[]}}', usage })) }
   const env = { JOBDONE, LEDGER, CAPS, AI }
   const request = () => worker.fetch(new Request('https://job-done.test/api/agent', { method: 'POST', headers: { cookie: 'jd_ws=usage6', 'content-type': 'application/json' }, body: JSON.stringify({ text: 'What am I owed?' }) }), env, { waitUntil() {} })

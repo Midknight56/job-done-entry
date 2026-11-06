@@ -445,7 +445,7 @@ describe('Worker API routes', () => {
     } })
     const result = await call(env, '/api/agent', { method: 'POST', body: { text: 'refund this invoice' } })
     expect(result.status).toBe(200)
-    expect(aiCalls).toBe(2)
+    expect(aiCalls).toBe(3)
     const ws = await saved(kv)
     expect(ws.panel.some((entry) => entry.kind === 'tool' && entry.status === 422)).toBe(true)
     expect(ws.panel.some((entry) => entry.kind === 'guard' && entry.status === 422)).toBe(true)

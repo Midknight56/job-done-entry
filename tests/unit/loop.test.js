@@ -83,17 +83,73 @@ describe('the two step loop', () => {
 
   it('a final that the guard drops gives no proposal and says why', async () => {
     const ws = seedWorkspace({ id: 'w1', now: NOW, tzOffsetMinutes: 0 })
-    const model = fakeModel([step1, { final: { kind: 'invoice', customer_id: 'c1', line_ids: ['p1', 'p7'] } }])
+    const model = fakeModel([
+      step1,
+      { final: { kind: 'invoice', customer_id: 'c1', line_ids: ['p1', 'p7'] } },
+      step1,
+      { final: { kind: 'invoice', customer_id: 'c1', line_ids: ['p1', 'p7'] } },
+    ])
     const out = await runTurn(ws, MARIA, { callModel: model.call, now: NOW })
     expect(out.proposal).toBe(null)
+    expect(model.seen).toHaveLength(4)
     expect(out.steps.at(-1)).toMatchObject({ kind: 'guard', result: 'dropped: not backed by a tool result' })
   })
 
-  it('never makes more than three model calls in a turn', async () => {
+  it('retries a dropped invoice once with the original words and tool results', async () => {
+    const ws = seedWorkspace({ id: 'w1', now: NOW, tzOffsetMinutes: 0 })
+    const wrongHours = { calls: [
+      { tool: 'find_customer', args: { name: 'Maria', place_hint: '14 Elm' } },
+      { tool: 'price_lines', args: { lines: [{ kind: 'callout' }, { kind: 'labour', hours: 2 }, { kind: 'part', description: 'Kitchen tap', cost: 89 }] } },
+    ] }
+    const rightHours = { calls: [
+      { tool: 'find_customer', args: { name: 'Maria', place_hint: '14 Elm' } },
+      { tool: 'price_lines', args: { lines: [{ kind: 'callout' }, { kind: 'labour', hours: 1.5 }, { kind: 'part', description: 'Kitchen tap', cost: 89 }] } },
+    ] }
+    const shortFinal = { final: { kind: 'invoice', customer_id: 'c1', line_ids: ['p1', 'p2'], summary: 'Kitchen tap' } }
+    const model = fakeModel([wrongHours, shortFinal, rightHours, step2])
+    const out = await runTurn(ws, MARIA, { callModel: model.call, now: NOW })
+    expect(out.proposal).toMatchObject({ kind: 'invoice', customerId: 'c1' })
+    expect(out.steps.filter((s) => s.kind === 'guard').map((s) => s.result)).toEqual([
+      'dropped: the total hours do not match what was said', 'passed',
+    ])
+    expect(model.seen).toHaveLength(4)
+  })
+
+  it('ends after the second guard drop without a fifth model call', async () => {
+    const ws = seedWorkspace({ id: 'w1', now: NOW, tzOffsetMinutes: 0 })
+    const wrongHours = { calls: [
+      { tool: 'find_customer', args: { name: 'Maria', place_hint: '14 Elm' } },
+      { tool: 'price_lines', args: { lines: [{ kind: 'callout' }, { kind: 'labour', hours: 2 }, { kind: 'part', description: 'Kitchen tap', cost: 89 }] } },
+    ] }
+    const shortFinal = { final: { kind: 'invoice', customer_id: 'c1', line_ids: ['p1', 'p2'], summary: 'Kitchen tap' } }
+    const model = fakeModel([wrongHours, shortFinal, wrongHours, shortFinal, step1])
+    const out = await runTurn(ws, MARIA, { callModel: model.call, now: NOW })
+    expect(out.proposal).toBe(null)
+    expect(out.message).toBe('I could not back that up, so I dropped it (the total hours do not match what was said). Try saying it again.')
+    expect(model.seen).toHaveLength(4)
+    expect(out.steps.filter((s) => s.kind === 'guard').map((s) => s.result)).toEqual([
+      'dropped: the total hours do not match what was said', 'dropped: the total hours do not match what was said',
+    ])
+  })
+
+  it('does not retry a cash amount guard drop', async () => {
+    const ws = seedWorkspace({ id: 'w1', now: NOW, tzOffsetMinutes: 0 })
+    ws.invoices['INV2-MARIA'] = { id: 'INV2-MARIA', customerId: 'c1', kind: 'invoice', total: '100.00', due: '100.00', status: 'SENT', sentAt: NOW, reminders: 0 }
+    const model = fakeModel([
+      { calls: [{ tool: 'find_customer', args: { name: 'Maria' } }, { tool: 'open_invoices', args: {} }] },
+      { final: { kind: 'cash', invoice_id: 'INV2-MARIA', amount: '20.00' } },
+      step1, step2,
+    ])
+    const out = await runTurn(ws, 'Maria paid cash', { callModel: model.call, now: NOW })
+    expect(out.message).toBe('How much cash was paid? Say one amount.')
+    expect(model.seen).toHaveLength(2)
+  })
+
+  it('never makes more than four model calls in a turn', async () => {
     const ws = seedWorkspace({ id: 'w1', now: NOW, tzOffsetMinutes: 0 })
     const model = fakeModel([step1, step1, step1, step1])
     const out = await runTurn(ws, MARIA, { callModel: model.call, now: NOW })
-    expect(model.seen.length).toBeLessThanOrEqual(3)
+    expect(model.seen.length).toBeLessThanOrEqual(4)
     expect(out.proposal).toBe(null)
   })
 
@@ -107,6 +163,52 @@ describe('the two step loop', () => {
 })
 
 describe('other turns', () => {
+  it('runs find_slots when a booking final skipped it and fills the first slot', async () => {
+    const ws = seedWorkspace({ id: 'w1', now: NOW, tzOffsetMinutes: 0 })
+    const model = fakeModel([
+      { calls: [{ tool: 'find_customer', args: { name: 'Maria' } }] },
+      { final: { kind: 'booking', customer_id: 'c1', summary: 'Bathroom tap repair' } },
+    ])
+    const out = await runTurn(ws, 'Book the bathroom tap for Maria next week.', { callModel: model.call, now: NOW })
+    expect(out.proposal).toMatchObject({ kind: 'booking', customerId: 'c1' })
+    expect(out.proposal.slot.id).toBe('s1')
+    expect(out.steps.map(s => s.kind === 'tool' ? s.name : s.kind)).toContain('find_slots')
+    expect(model.seen).toHaveLength(2)
+  })
+
+  it('replaces a fabricated booking slot id with the first found slot', async () => {
+    const ws = seedWorkspace({ id: 'w1', now: NOW, tzOffsetMinutes: 0 })
+    const model = fakeModel([
+      { calls: [{ tool: 'find_customer', args: { name: 'Maria' } }] },
+      { final: { kind: 'booking', customer_id: 'c1', slot_id: '<first slot id>', summary: 'Bathroom tap repair' } },
+    ])
+    const out = await runTurn(ws, 'Book the bathroom tap for Maria next week.', { callModel: model.call, now: NOW })
+    expect(out.proposal.kind).toBe('booking')
+    expect(out.proposal.slot.id).toBe('s1')
+    expect(model.seen).toHaveLength(2)
+  })
+
+  it('keeps the second slot when the model called find_slots and chose it', async () => {
+    const ws = seedWorkspace({ id: 'w1', now: NOW, tzOffsetMinutes: 0 })
+    const model = fakeModel([
+      { calls: [{ tool: 'find_customer', args: { name: 'Maria' } }, { tool: 'find_slots', args: {} }] },
+      { final: { kind: 'booking', customer_id: 'c1', slot_id: 's3', summary: 'Bathroom tap repair' } },
+    ])
+    const out = await runTurn(ws, 'Book the bathroom tap for Maria next week.', { callModel: model.call, now: NOW })
+    expect(out.proposal.kind).toBe('booking')
+    expect(out.proposal.slot.id).toBe('s3')
+  })
+
+  it('asks which day when a booking has no date and skipped find_slots', async () => {
+    const ws = seedWorkspace({ id: 'w1', now: NOW, tzOffsetMinutes: 0 })
+    const model = fakeModel([
+      { calls: [{ tool: 'find_customer', args: { name: 'Maria' } }] },
+      { final: { kind: 'booking', customer_id: 'c1', summary: 'Visit' } },
+    ])
+    const out = await runTurn(ws, 'Book a visit for Maria.', { callModel: model.call, now: NOW })
+    expect(out.message).toBe('Which day? Say one day, like tomorrow or Thursday.')
+  })
+
   it('a booking turn drafts a job in a found slot with a 50.00 deposit draft', async () => {
     const ws = seedWorkspace({ id: 'w1', now: NOW, tzOffsetMinutes: 0 })
     const model = fakeModel([

@@ -70,7 +70,7 @@ up, the demo lines are answered from recorded model output, labelled on screen, 
 | The rate card that learns | Say "call out is 60 now" and the draft offers a one tap change; code reads the rate from your words, and later lines say "you said 60 on 28 Oct" |
 | PayPal Webhooks | Paid and cancelled events, each checked with PayPal's signature verification first |
 | Whisper on Workers AI | Speech to text, 30 seconds at most |
-| Qwen 3 30B on Workers AI | Calls the app's read only tools: find the customer, price lines from the rate card, find free slots, read open invoices |
+| IBM Granite 4.0 H Micro on Workers AI | Calls the app's read only tools: find the customer, price lines from the rate card, find free slots, read open invoices |
 | The guard (`src/agent/guard.js`) | Drops any proposal that names an id no tool returned, any figure no tool returned, a part cost that was not said, or hours that do not match the time said |
 | Bryntum Calendar | The week, each job coloured by its money state; the agent's moves are applied to its event store so they animate |
 | Cloudflare Worker, Durable Objects and KV | One Worker serves the pages and API; each workspace lives in a Durable Object. KV keeps the invoice index, expired workspace markers and daily counters. |
@@ -122,6 +122,8 @@ npm run dev
 ```
 
 To deploy, create the `JOBDONE` KV namespace and put its id in `wrangler.jsonc`:
+
+Run `npm run check:models` to check that the model pages show no retirement notice. Deploy runs this check before it writes files or deploys.
 
 ```bash
 npx wrangler kv namespace create JOBDONE
@@ -177,9 +179,13 @@ at build time; it is never part of this repository. Without it the app uses a pl
 | Unit tests | 544 passing; lines 100 percent, branches 97.07 percent | `npx vitest run --coverage`, 24 Oct 2026 |
 | Browser tests | 59 passing in one run (happy path with a real sandbox payment, bad paths, error states, calendar, drag and clash, hold release, layout at 3 sizes, customer page, settings, 34 attack tests) | `npm run e2e` against a local Worker, 23 Oct 2026; happy, bad and hold release paths also passed twice on the hosted app |
 | Full demo rehearsal, three runs back to back | 155, 158 and 159 s; 17 of 17 steps each; every turn on the live model | `tests/live/api-flow.mjs` on the hosted app, 24 Oct 2026 |
-| AI cost of one full demo | 12 model calls, about 87 neurons real, 95 counted | Cloudflare analytics and the shared ledger, 24 Oct 2026 |
-| AI cost of one agent turn, real | 12.68 to 15.55 neurons | Workers AI token counts, 3 recorded turns, 23 Oct 2026 |
-| AI cost of one agent turn, charged before it runs | 39 to 40 neurons (worst case) | `src/caps.js` |
+| AI cost of one full demo (Qwen, before 6 Nov 2026) | 12 model calls, about 87 neurons real, 95 counted | Cloudflare analytics and the shared ledger, 24 Oct 2026 |
+| AI cost of one agent turn, real (Qwen, before 6 Nov 2026) | 12.68 to 15.55 neurons | Workers AI token counts, 3 recorded turns, 23 Oct 2026 |
+| AI cost of one agent turn, charged before it runs (Qwen, before 6 Nov 2026) | 39 to 40 neurons (worst case) | `src/caps.js` |
+| AI cost of one step, charged before it runs | 11.592408 neurons (worst case) | Granite constants in `src/caps.js`, 6 Nov 2026 |
+| AI cost of one agent turn on Granite, real | 4.58 neurons for "Dave paid cash, 108." (2 calls: 1,145 + 1,174 tokens in, 68 + 31 out) | Workers AI usage, 6 Nov 2026 |
+| AI cost of one agent turn on Granite, charged before it runs | 46.37 neurons at most (4 calls: two steps, one JSON retry, one guard retry) | `src/caps.js` |
+| Full demo on Granite | 18 of 18 steps, every turn live, 3 runs on a local Worker with the real model and 1 on the hosted app (build efa4829) | `tests/live/api-flow.mjs`, 6 Nov 2026 |
 | Whisper cost | 6.82 neurons for 8.8 s of speech (46.63 a minute) | Hosted app, 23 Oct 2026 |
 | PayPal create, send, QR and read back in one tap | about 2.3 s (4 calls) | Local Worker against the sandbox, 22 Oct 2026 |
 | Paid webhook after a buyer pays | about 70 s, signature SUCCESS | Hosted app, 23 Oct 2026 |
