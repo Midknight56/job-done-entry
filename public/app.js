@@ -696,7 +696,7 @@ function renderOwed() {
       if (invoice.shared) {
         const shared = document.createElement('small')
         shared.className = 'owed-shared'
-        shared.textContent = 'shared demo invoice'
+        shared.textContent = 'shared invoice'
         details.append(shared)
       }
       const dueLabel = document.createElement('span')

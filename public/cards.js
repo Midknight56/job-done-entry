@@ -230,7 +230,7 @@ export function renderProposal(proposal, helpers) {
         <label>Name <input name="name" maxlength="60" required></label>
         <label>Address <input name="address" maxlength="80"></label>
         <label>Email <input name="email" placeholder="name@example.com" required aria-describedby="customer-email-help"></label>
-        <p class="meta" id="customer-email-help">Demo invoices go to example.com addresses only.</p>
+        <p class="meta" id="customer-email-help">Invoices go to example.com addresses only.</p>
         <p role="alert"></p>
         <button class="primary" type="submit">Save customer</button>
       </form>`

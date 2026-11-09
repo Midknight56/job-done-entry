@@ -18,4 +18,17 @@ describe('film labels', () => {
       expect(content).not.toContain('PayPal (sandbox)')
     }
   })
+
+  it('no screen label in the app says demo invoice', () => {
+    const files = [
+      'public/app.js',
+      'public/sheet.js',
+      'public/customer.html',
+      'public/cards.js',
+    ]
+    for (const file of files) {
+      const content = readFileSync(join(root, file), 'utf8')
+      expect(content).not.toMatch(/demo invoice/i)
+    }
+  })
 })

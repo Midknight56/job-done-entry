@@ -141,7 +141,7 @@ export function updateInvoiceSheet(state) {
   if (invoice.shared) {
     const shared = document.createElement('div')
     shared.className = 'quiet shared-invoice'
-    shared.textContent = 'Shared demo invoice'
+    shared.textContent = 'Shared invoice'
     sheet.append(shared)
   } else if (invoice.hasQr && !closed) {
     const qrCard = document.createElement('div')
