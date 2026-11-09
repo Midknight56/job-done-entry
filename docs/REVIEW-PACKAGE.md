@@ -4,15 +4,15 @@ Each claim in the Devpost text (`DEVPOST.md`) and the film, with the code that m
 proves it, and where the film shows it. Test names are quoted exactly; run them with `npm test` (unit) or
 `npx playwright test <file>` against a local worker (`npm run dev:local`) or the hosted app.
 
-Source revision: the live build `46b9db3` (later commits change only docs, the film tools and the footage script). Results below are from 9 Nov 2026.
+Source revision: the live build `2a4e457`. Results below are from 9 Nov 2026.
 
 ## Results
 
 | Check | Result |
 | --- | --- |
-| Unit tests (`npx vitest run`) | 882 passed |
+| Unit tests (`npx vitest run`) | 887 passed |
 | Type check (`npx tsc`) | 0 errors |
-| Browser tests (`npx playwright test`, local worker) | 111 passed, 0 failed, 6 skipped |
+| Browser tests (`npx playwright test`, local worker) | 113 passed, 0 failed, 7 skipped |
 | Full demo on the hosted app (`tests/live/api-flow.mjs`) | 18 of 18 steps, every AI turn live |
 | Three agent turns, three times, on the hosted app (`tests/live/agent-3x.mjs`) | 9 of 9 |
 
@@ -37,8 +37,8 @@ Source revision: the live build `46b9db3` (later commits change only docs, the f
 | Claim | Code | Test | Film |
 | --- | --- | --- | --- |
 | Every customer, invoice and slot id must come from a tool result in the same turn | `checkFinal()` in `src/agent/guard.js` | `tests/unit/guard.test.js` | |
-| In every text the model writes, a sentence with an amount that no tool returned and nobody said is removed | `scrubText()` and `figuresIn()` in `src/agent/guard.js` | "removes a sentence holding an amount not in the tool results", "removes an unsupported figure from a booking summary", "removes unsupported figures from a new customer name", "treats small amounts with a currency as money" (`tests/unit/guard.test.js`) | 0:04, "The AI picks the lines. Code sets every price." |
-| In an answer about money, each amount must be an invoice amount (or their total), and code links that invoice | the answer branch of `checkFinal()` | "links an owed amount to the invoice it came from", "removes an amount that is no invoice amount" (`tests/unit/guard.test.js`) | 1:43 |
+| In every text the model writes, a sentence with an amount that no tool returned and nobody said is removed; in a sentence about money a bare "5" or "five" is an amount, and a number before "days", "hours" or "invoices" is a count | `scrubText()` and `figuresIn()` in `src/agent/guard.js` | "removes a sentence holding an amount not in the tool results", "removes an unsupported figure from a booking summary", "removes unsupported figures from a new customer name", "treats small amounts with a currency as money", "treats a small whole number in a money sentence as money" (`tests/unit/guard.test.js`) | 0:04, "The AI picks the lines. Code sets every price." |
+| An answer about money is written by code from the open invoice rows: who owes you, the amount, how late, and the link all come from one invoice; the model only picks which invoices | `owedText()` and the answer case of `build()` in `src/agent/loop.js` | "a money answer is built from the invoice rows, not the model text: a reversed direction", "a money answer is built from the invoice rows, not the model text: a figure from another tool linked to the wrong invoice", "a money answer is built from the invoice rows, not the model text: a small whole number in a money sentence", "a money answer about one customer lists only the rows the model chose, each with its own link" (`tests/unit/loop.test.js`) | 1:43 |
 
 ## Fixing a misheard note, and reminders
 

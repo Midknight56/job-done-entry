@@ -231,7 +231,7 @@ describe('turn loop builds proposals and reports model failures', () => {
     const one = await runTurn(ws, 'owed', { callModel: model([
       { calls: [{ tool: 'open_invoices', args: {} }] }, { final: { kind: 'answer', text: '', invoice_ids: [] } },
     ]), now: NOW })
-    expect(one.proposal.text).toBe('25.00 from Sam Okafor, 9 days late. 25.00 in all.')
+    expect(one.proposal.text).toBe('Sam Okafor owes you 25.00, 9 days late. 25.00 in all.')
     ws.invoices.I1.status = 'PAID'
     const none = await runTurn(ws, 'owed', { callModel: model([
       { calls: [{ tool: 'open_invoices', args: {} }] }, { final: { kind: 'answer', text: '', invoice_ids: [] } },

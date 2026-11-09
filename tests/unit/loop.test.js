@@ -231,7 +231,7 @@ describe('other turns', () => {
       { final: { kind: 'answer', text: 'You are owed 999.00.', invoice_ids: ['INV2-SAM'] } },
     ])
     const out = await runTurn(ws, 'What am I owed?', { callModel: model.call, now: NOW })
-    expect(out.proposal.text).toBe('340.00 from Sam Okafor, 15 days late. 340.00 in all.')
+    expect(out.proposal.text).toBe('Sam Okafor owes you 340.00, 15 days late. 340.00 in all.')
     expect(out.proposal.invoiceIds).toEqual(['INV2-SAM'])
     expect(out.proposal.reason).toBe('Each figure is an open invoice.')
     expect(out.steps.at(-1).result).toMatch(/removed/)
@@ -247,12 +247,45 @@ describe('other turns', () => {
       { final: { kind: 'answer', text: 'You are owed 340.00 by Sam Okafor and 282.42 by Maria Lopez. Total owed is 672.42.', invoice_ids: [] } },
     ])
     const out = await runTurn(ws, 'What am I owed?', { callModel: model.call, now: NOW })
-    expect(out.proposal.text).toBe('340.00 from Sam Okafor. 282.42 from Maria Lopez. 50.00 from Maria Lopez. 672.42 in all.')
+    expect(out.proposal.text).toBe('Sam Okafor owes you 340.00. Maria Lopez owes you 282.42. Maria Lopez owes you a 50.00 deposit. 672.42 in all.')
     expect(out.steps.at(-1).result).toMatch(/removed/)
   })
 
+  // A review on 9 Nov 2026 reproduced all three: a money answer is written by code from the invoice rows, so who
+  // owes whom, the amount and the linked invoice always come from the same row.
+  for (const [name, text, said] of [
+    ['a reversed direction', 'You owe 340.00 to Sam Okafor.', 'What am I owed?'],
+    ['a figure from another tool linked to the wrong invoice', 'You are owed 85.', 'What am I owed? Labour is 85.'],
+    ['a small whole number in a money sentence', 'You owe 5.', 'What am I owed?'],
+  ]) {
+    it(`a money answer is built from the invoice rows, not the model text: ${name}`, async () => {
+      const ws = seedWorkspace({ id: 'w1', now: NOW, tzOffsetMinutes: 0 })
+      ws.invoices['INV2-SAM'] = { id: 'INV2-SAM', customerId: 'c3', kind: 'invoice', total: '340.00', due: '340.00', status: 'SENT', sentAt: NOW - 15 * 86_400_000, reminders: 2 }
+      const model = fakeModel([
+        { calls: [{ tool: 'open_invoices', args: {} }] },
+        { final: { kind: 'answer', text, invoice_ids: ['INV2-SAM'] } },
+      ])
+      const out = await runTurn(ws, said, { callModel: model.call, now: NOW })
+      expect(out.proposal.text).toBe('Sam Okafor owes you 340.00, 15 days late. 340.00 in all.')
+      expect(out.proposal.invoiceIds).toEqual(['INV2-SAM'])
+    })
+  }
+
+  it('a money answer about one customer lists only the rows the model chose, each with its own link', async () => {
+    const ws = seedWorkspace({ id: 'w1', now: NOW, tzOffsetMinutes: 0 })
+    ws.invoices['INV2-SAM'] = { id: 'INV2-SAM', customerId: 'c3', kind: 'invoice', total: '340.00', due: '340.00', status: 'SENT', sentAt: NOW, reminders: 0 }
+    ws.invoices['INV2-MARIA'] = { id: 'INV2-MARIA', customerId: 'c1', kind: 'invoice', total: '282.42', due: '282.42', status: 'SENT', sentAt: NOW, reminders: 0 }
+    const model = fakeModel([
+      { calls: [{ tool: 'open_invoices', args: {} }] },
+      { final: { kind: 'answer', text: 'Maria owes 282.42.', invoice_ids: ['INV2-MARIA'] } },
+    ])
+    const out = await runTurn(ws, 'What does Maria owe?', { callModel: model.call, now: NOW })
+    expect(out.proposal.text).toBe('Maria Lopez owes you 282.42.')
+    expect(out.proposal.invoiceIds).toEqual(['INV2-MARIA'])
+  })
+
   it('calls an open invoice eight days old late and does not call one six days old late', async () => {
-    for (const [age, expected] of [[8, '340.00 from Sam Okafor, 8 days late. 340.00 in all.'], [6, '340.00 from Sam Okafor. 340.00 in all.']]) {
+    for (const [age, expected] of [[8, 'Sam Okafor owes you 340.00, 8 days late. 340.00 in all.'], [6, 'Sam Okafor owes you 340.00. 340.00 in all.']]) {
       const ws = seedWorkspace({ id: 'w1', now: NOW, tzOffsetMinutes: 0 })
       ws.invoices['INV2-SAM'] = { id: 'INV2-SAM', customerId: 'c3', kind: 'invoice', total: '340.00', due: '340.00', status: 'SENT', sentAt: NOW - age * 86_400_000, reminders: 0 }
       const model = fakeModel([

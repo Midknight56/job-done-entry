@@ -45,19 +45,27 @@ const SIGNS = /[$£€¥₹]\s?/g
 const DIGIT_FIGURE = /([$£€¥₹]\s?)?\b\d[\d,]*(\.\d+)?\b(?=(\s*(?:dollars?|bucks?|cad|usd)\b)?)/gi
 const DIGITS_ONLY = /[$£€¥₹]?\s?\b\d[\d,]*(\.\d+)?\b/g
 const WORDS_THEN_CURRENCY = /((?:[a-z]+[\s-]+){1,4})(?:dollars?|bucks?|cad|usd)\b/gi
+// A sentence about money: a bare "5" or "five" in it is an amount (a review on 9 Nov 2026 found "You owe 5." kept).
+const MONEY_WORDS = /\b(?:owes?|owed|owing|pay|pays|paid|due|costs?|price|total|deposit|tip|balance|charged?|bill(?:ed)?|refund(?:ed)?)\b/i
+// Units after a figure that count something else, even in a money sentence ("paid 2 days ago").
+const COUNT_UNIT = /^\s*(?:days?|hours?|h|minutes?|mins?|weeks?|months?|years?|invoices?|jobs?|visits?|reminders?|times?|am|pm|percent|%)(?![a-z])/i
+const WORDS_THEN_UNIT = /((?:[a-z]+[\s-]+){1,4})(?:days?|hours?|minutes?|weeks?|months?|years?|invoices?|jobs?|visits?|reminders?|times?)\b/gi
 
 /**
  * The figures a sentence states, each marked as money or not. A figure is money when a currency sign goes before it,
- * a currency word follows it, or it has exactly two decimals. Number words count when a currency word follows them,
- * or when they are above 12.
+ * a currency word follows it, it has exactly two decimals, or the sentence is about money (owe, paid, due, deposit and
+ * the like) and no unit such as "days" follows it. Number words count when a currency word follows them, when the
+ * sentence is about money and no unit follows them, or when they are above 12.
  * @param {string} sentence the sentence with its currency signs still in it
  * @returns {{ n: number, money: boolean }[]}
  */
 function figuresIn(sentence) {
   const out = []
+  const moneySentence = MONEY_WORDS.test(sentence)
   for (const m of sentence.matchAll(DIGIT_FIGURE)) {
     const n = Number(m[0].replace(SIGNS, '').replace(/[,\s]/g, ''))
-    const money = Boolean(m[1] || m[3] || (m[2] && m[2].length === 3))
+    const counts = COUNT_UNIT.test(sentence.slice((m.index ?? 0) + m[0].length))
+    const money = Boolean(m[1] || m[3] || (m[2] && m[2].length === 3) || (moneySentence && !counts))
     out.push({ n, money })
   }
   const words = sentence.replace(DIGITS_ONLY, ' ')
@@ -66,8 +74,13 @@ function figuresIn(sentence) {
     const found = numbersIn(m[1])
     if (found.length) withCurrency.add(found[found.length - 1])
   }
+  const counted = new Set()
+  for (const m of words.matchAll(WORDS_THEN_UNIT)) {
+    const found = numbersIn(m[1])
+    if (found.length) counted.add(found[found.length - 1])
+  }
   for (const n of numbersIn(words)) {
-    if (withCurrency.has(n)) out.push({ n, money: true })
+    if (withCurrency.has(n) || (moneySentence && !counted.has(n))) out.push({ n, money: true })
     else if (n > 12) out.push({ n, money: false })
   }
   return out

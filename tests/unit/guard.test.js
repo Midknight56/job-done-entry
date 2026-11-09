@@ -205,6 +205,12 @@ describe('claims are enforced', () => {
     for (const text of ['Come at 9.', 'It took 2 hours.', 'You have 3 invoices.']) expect(scrubText(text, empty).text).toBe(text)
   })
 
+  it('treats a small whole number in a money sentence as money', () => {
+    for (const text of ['You owe 5.', 'You owe five.', 'Sam owes 7 on the tap.', 'The deposit is 9.']) expect(scrubText(text, empty).text).toBe('')
+    expect(scrubText('Sam owes 7.', { results: [], transcript: 'Sam owes 7' }).text).toBe('Sam owes 7.')
+    for (const text of ['Sam paid 2 days ago.', 'You owe nothing on 3 invoices.', 'Pay within 7 days.']) expect(scrubText(text, empty).text).toBe(text)
+  })
+
   const invoices = [
     { invoice_id: 'A', customer_id: 'c1', due: 50, total: 50, days_since_sent: 14 },
     { invoice_id: 'B', customer_id: 'c3', due: 999, total: 999, days_since_sent: 2 },

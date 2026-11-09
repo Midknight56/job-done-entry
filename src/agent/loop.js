@@ -236,8 +236,14 @@ function build(ws, p, { results, lineInputs, now, transcript }) {
       return { kind: 'reminder', invoiceId: p.invoice_id, tone, text: p.text || reminderTemplate(tone, inv, name(inv?.customerId)), customer: name(inv?.customerId), due: inv?.due, reason: 'PayPal sends its standard reminder. The draft is for you to send yourself.' }
     }
     case 'answer': {
-      const text = p.text || owedFromResults(results, ws.settings.lateDays ?? LATE_DAYS)
-      return { kind: 'answer', text, invoiceIds: p.invoice_ids.length ? p.invoice_ids : openIds(results), reason: 'Each figure is an open invoice.' }
+      // A money answer is written by code from the open invoice rows: who owes whom, the amount and the linked invoice
+      // come from the same row. The model only picks which rows (a review on 9 Nov 2026 found "You owe 340.00 to Sam
+      // Okafor." and "You are owed 85." had passed a check that matched numbers alone).
+      const rows = results.filter((x) => x.tool === 'open_invoices' && x.result && !x.result.error).at(-1)?.result?.invoices
+      if (!rows) return { kind: 'answer', text: p.text || 'Nothing is owed right now.', invoiceIds: p.invoice_ids, reason: 'Each figure is an open invoice.' }
+      const picked = rows.filter((r) => p.invoice_ids.includes(r.invoice_id))
+      const chosen = picked.length ? picked : rows
+      return { kind: 'answer', text: owedText(chosen, ws.settings.lateDays ?? LATE_DAYS, chosen.length === rows.length), invoiceIds: chosen.map((r) => r.invoice_id), reason: 'Each figure is an open invoice.' }
     }
     // The guard passes only the kinds above, so the last one is the new customer card.
     default:
@@ -253,14 +259,15 @@ export function reminderTemplate(tone, inv, who) {
   return `Hi ${first}. Just a nudge on the ${inv?.due} invoice. Thanks again for having me out.`
 }
 
-/** A plain answer built by code from open_invoices, used when the model's text did not survive the guard. */
-function owedFromResults(results, lateDays) {
-  const r = results.filter((x) => x.tool === 'open_invoices').at(-1)?.result
-  if (!r || !r.invoices?.length) return 'Nothing is owed right now.'
-  const parts = r.invoices.map((i) => `${i.due} from ${i.customer}${i.days_since_sent > lateDays ? `, ${i.days_since_sent} days late` : ''}`)
-  return `${parts.join('. ')}. ${r.total_due} in all.`
-}
-
-function openIds(results) {
-  return results.filter((x) => x.tool === 'open_invoices').flatMap((x) => (x.result.invoices || []).map((i) => i.invoice_id))
+/**
+ * The answer about money, from open_invoices rows only: "Sam Okafor owes you 340.00, 15 days late. 340.00 in all."
+ * @param {any[]} rows @param {number} lateDays
+ */
+export function owedText(rows, lateDays, everything = true) {
+  if (!rows.length) return 'Nothing is owed right now.'
+  const parts = rows.map((i) => `${i.customer} owes you ${i.kind === 'deposit' ? `a ${i.due} deposit` : i.due}${i.days_since_sent > lateDays ? `, ${i.days_since_sent} days late` : ''}`)
+  const cents = rows.reduce((n, i) => n + Math.round(Number(i.due) * 100), 0)
+  // The total closes an answer about everything owed, or about more than one invoice.
+  const total = everything || rows.length > 1 ? ` ${(cents / 100).toFixed(2)} in all.` : ''
+  return `${parts.join('. ')}.${total}`
 }

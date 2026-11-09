@@ -59,10 +59,12 @@ customers, price work, find free slots and read invoices.
 Code, not the model, decides what reaches the screen:
 - Prices come from the rate card. A part cost must have been said, and labour hours must match the time said.
 - Every customer, invoice and slot id must come from a tool result in the same turn.
-- In every text the model writes (summaries, notes, reminder text, answers, a new customer's name), a sentence with an
-  amount that no tool returned and nobody said is removed.
-- In an answer about money, each amount must be an amount of an invoice the tools returned, or their total, and code
-  links that invoice. Any other amount is removed.
+- In every text the model writes (summaries, notes, reminder text, a new customer's name), a sentence with an amount
+  that no tool returned and nobody said is removed. In a sentence about money ("owes", "paid", "deposit" and the like)
+  a bare "5" or "five" counts as an amount too. A number followed by "days", "hours" or "invoices" is a count.
+- An answer about money is written by code from the open invoices, not by the model. Each line names who owes you,
+  the amount and how late it is, all from one invoice, and links that invoice. The model only picks which invoices
+  the question is about.
 - A booking always takes the earliest free slot that the slot tool found.
 
 The PayPal Invoicing API handles invoices, QR codes, cash payment records, reminders and cancellations. Before sending,
@@ -73,8 +75,8 @@ a fixed invoice number, so two taps never make two invoices.
 Bryntum Calendar opens on the day view. Its mode buttons switch to the week. Jobs show their money state in words and
 colours. A plain calendar is available if Bryntum cannot load.
 
-Before each model call, the app reserves the worst case cost against visitor, app and account budgets inside
-Cloudflare's free allowance, and stops further calls when a budget is reached. Recorded answers keep the demo lines
+Before each model call, the app reserves a careful estimate of its cost against visitor, app and account budgets inside
+Cloudflare's free allowance, records the real use after, and stops further calls when a budget is reached. Recorded answers keep the demo lines
 working after the AI budget runs out, and they are labelled on screen. PayPal calls stay live sandbox calls.
 
 ## Challenges we ran into

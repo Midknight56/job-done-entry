@@ -77,7 +77,7 @@ up, the demo lines are answered from recorded model output, labelled on screen, 
 | PayPal Webhooks | Paid and cancelled events, each checked with PayPal's signature verification first |
 | Whisper on Workers AI | Speech to text, 30 seconds at most |
 | IBM Granite 4.0 H Micro on Workers AI | Calls the app's read only tools: find the customer, price lines from the rate card, find free slots, read open invoices |
-| The guard (`src/agent/guard.js`) | Drops any proposal that names an id no tool returned, a part cost that was not said, hours that do not match the time said, or a booking that is not the earliest free slot. Removes any sentence in model text that states an amount no tool returned and nobody said. Links each amount in an answer to its invoice |
+| The guard (`src/agent/guard.js`) | Drops any proposal that names an id no tool returned, a part cost that was not said, hours that do not match the time said, or a booking that is not the earliest free slot. Removes any sentence in model text that states an amount no tool returned and nobody said; in a sentence about money a bare "5" counts as an amount. An answer about money is written by code from the open invoices: who owes you, the amount and the link come from one invoice |
 | Bryntum Calendar | Day and week views (it opens on the day), each job coloured by its money state; the agent's moves are applied to its event store so they animate |
 | Cloudflare Worker, Durable Objects and KV | One Worker serves the pages and API; each workspace lives in a Durable Object. KV keeps the invoice index, expired workspace markers and daily counters. |
 

@@ -37,7 +37,7 @@ describe('what am I owed', () => {
       now: NOW,
       api,
     })
-    expect(out.proposal.text).toBe('340.00 from Sam, 15 days late. 50.00 deposit from Priya. 390.00 in all.')
+    expect(out.proposal.text).toBe('Sam Okafor owes you 340.00, 15 days late. Priya Nair owes you a 50.00 deposit. 390.00 in all.')
     expect(out.proposal.invoiceIds).toEqual(['INV2-SAM', 'INV2-PRIYA'])
   })
 
@@ -48,7 +48,7 @@ describe('what am I owed', () => {
       now: NOW,
       api,
     })
-    expect(out.proposal.text).toBe('340.00 from Sam.')
+    expect(out.proposal.text).toBe('Sam Okafor owes you 340.00, 15 days late.')
     expect(out.proposal.invoiceIds).toEqual(['INV2-SAM'])
   })
 })
