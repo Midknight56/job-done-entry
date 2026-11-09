@@ -68,6 +68,19 @@ test('owed rows show the amount on the right', async ({ page }) => {
   expect(Math.abs(amount.y - name.y)).toBeLessThan(12)
 })
 
+test('late invoices come first in Owed, and an amount opens its invoice', async ({ page }) => {
+  await sendInvoice(page)
+  await page.locator('#sheet').getByRole('button', { name: 'Close' }).click()
+  await page.getByRole('tab', { name: 'Owed' }).click()
+  // The demo starts with Sam's invoice sent on 24 Oct 2026 (late) and Dave's from yesterday; Maria's is new.
+  await expect(page.locator('.owed-group')).toHaveText(['Late', 'Waiting'])
+  const order = await page.locator('.owed-list').evaluate((list) => [...list.children].map((el) => el.classList.contains('owed-group') ? el.textContent : 'row'))
+  expect(order[0]).toBe('Late')
+  expect(order.indexOf('Waiting')).toBeGreaterThan(1)
+  await page.locator('.owed-row').first().click()
+  await expect(page.locator('#sheet:not([hidden])')).toBeVisible()
+})
+
 test('a booking shows label and value rows', async ({ page }) => {
   await say(page, 'Book the bathroom tap for Maria next week.')
   await expect(page.locator('.card')).toContainText('One hour by default.')

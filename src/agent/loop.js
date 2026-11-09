@@ -170,8 +170,9 @@ export async function runTurn(ws, transcript, { callModel, now, api }) {
       if (executed.failure) return fail(executed.failure)
       latestSlots = results.filter((r) => r.tool === 'find_slots').at(-1)?.result
     }
+    // A booking always takes the earliest free slot (findSlots returns them in time order); the model's pick does not count.
     const slots = latestSlots?.slots || []
-    if (slots.length && !slots.some((slot) => slot.id === reply.final.slot_id)) reply.final.slot_id = slots[0].id
+    if (slots.length) reply.final.slot_id = slots[0].id
   }
 
   let guardRetried = false

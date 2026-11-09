@@ -182,3 +182,63 @@ describe('currency signs', () => {
     expect(scrubText('That is $ 340.00 in all.', { results: open, transcript: '' }).text).toBe('That is 340.00 in all.')
   })
 })
+
+describe('claims are enforced', () => {
+  const empty = { results: [], transcript: '' }
+  const slots = [{ id: 's1', start: '2026-11-02T08:00:00.000Z', end: '2026-11-02T09:00:00.000Z' }, { id: 's2', start: '2026-11-02T09:00:00.000Z', end: '2026-11-02T10:00:00.000Z' }]
+  const bookingCtx = { results: [{ tool: 'find_customer', result: { matches: [{ id: 'c1' }] } }, { tool: 'find_slots', result: { slots } }], transcript: 'Book the bathroom tap for Maria next week.' }
+
+  it('drops a booking that is not the first free slot', () => {
+    expect(checkFinal({ kind: 'booking', customer_id: 'c1', slot_id: 's2', summary: 'Bathroom tap' }, bookingCtx)).toEqual({ ok: false, reason: 'not the first free slot' })
+  })
+
+  it('removes an unsupported figure from a booking summary', () => {
+    const out = checkFinal({ kind: 'booking', customer_id: 'c1', slot_id: 's1', summary: 'Bathroom tap costs 999.00.' }, bookingCtx)
+    expect(out.ok).toBe(true)
+    expect(JSON.stringify(out)).not.toContain('999')
+    expect(out.proposal.summary).toBe('Job')
+  })
+
+  it('treats small amounts with a currency as money', () => {
+    for (const text of ['You owe 5 dollars.', 'You owe $5.', 'You owe five dollars.']) expect(scrubText(text, empty).text).toBe('')
+    expect(scrubText('You owe 5 dollars.', { results: [], transcript: 'she paid 5 dollars' }).text).toBe('You owe 5 dollars.')
+    for (const text of ['Come at 9.', 'It took 2 hours.', 'You have 3 invoices.']) expect(scrubText(text, empty).text).toBe(text)
+  })
+
+  const invoices = [
+    { invoice_id: 'A', customer_id: 'c1', due: 50, total: 50, days_since_sent: 14 },
+    { invoice_id: 'B', customer_id: 'c3', due: 999, total: 999, days_since_sent: 2 },
+  ]
+  const owedCtx = { results: [{ tool: 'open_invoices', result: { invoices } }], transcript: 'What am I owed? I said 70 earlier.' }
+
+  it('links an owed amount to the invoice it came from', () => {
+    const out = checkFinal({ kind: 'answer', text: '999.00 is owed.', invoice_ids: ['A'] }, owedCtx)
+    expect(out.ok && out.proposal.text).toBe('999.00 is owed.')
+    expect(out.ok && out.proposal.invoice_ids).toContain('B')
+  })
+
+  it('removes an amount that is no invoice amount', () => {
+    const out = checkFinal({ kind: 'answer', text: '70.00 is owed.', invoice_ids: [] }, owedCtx)
+    expect(out.ok && out.proposal.text).toBe('')
+  })
+
+  it('keeps counts and days in an answer', () => {
+    const out = checkFinal({ kind: 'answer', text: 'Sam is 14 days late.', invoice_ids: ['A'] }, owedCtx)
+    expect(out.ok && out.proposal.text).toBe('Sam is 14 days late.')
+  })
+
+  it('removes unsupported figures from a new customer name', () => {
+    const out = checkFinal({ kind: 'invoice', customer_id: 'new', customer_name: 'Bob 999.00' }, { results: [{ tool: 'find_customer', result: { matches: [] } }], transcript: 'Tap for Bob, an hour.' })
+    expect(out.ok && out.proposal.kind).toBe('new_customer')
+    expect(JSON.stringify(out)).not.toContain('999')
+  })
+})
+
+describe('currency signs', () => {
+  it('strips every currency sign and leaves letters alone', () => {
+    const ctx = { results: [], transcript: '5.50' }
+    expect(scrubText('It is £5.50. Or €5.50. Or ₹5.50. Or $5.50.', ctx).text).toBe('It is 5.50. Or 5.50. Or 5.50. Or 5.50.')
+    expect(scrubText('Café crème is fine.', ctx).text).toBe('Café crème is fine.')
+    expect(scrubText('Ça va, â bientôt.', ctx).text).toBe('Ça va, â bientôt.')
+  })
+})

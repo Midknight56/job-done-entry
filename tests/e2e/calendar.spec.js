@@ -12,7 +12,8 @@ for (const kind of ['bryntum', 'fallback']) {
     await page.reload()
     await page.getByRole('tab', { name: 'Calendar' }).click()
     if (kind === 'bryntum') await page.getByRole('button', { name: 'Week', exact: true }).click()
-    const dave = page.locator('[data-job-id="j1"]').first()
+    // Visible only: on a Monday Dave's job is today, and the Day view the calendar opened on keeps a hidden, stale copy.
+    const dave = page.locator('[data-job-id="j1"]:visible').first()
     await expect(dave).toHaveAttribute('data-state', 'sent', { timeout: 20_000 })
 
     const state = await (await page.request.get('/api/state')).json()

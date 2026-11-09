@@ -916,3 +916,66 @@ textarea:focus, button:focus-visible, a:focus-visible {
 .visit-form { display: grid; gap: .75rem; margin: 1rem 0; }
 .visit-form label { display: grid; gap: .25rem; }
 .visit-form input, .visit-form select { max-width: 100%; min-width: 0; padding: .5rem; }
+.recovery {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 14px;
+  margin-bottom: 12px;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+.recovery summary {
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 24px;
+}
+.recovery p {
+  margin: 8px 0;
+}
+.recovery ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+.recovery li {
+  margin: 4px 0;
+}
+.recovery li[data-result="chosen"] {
+  color: var(--paid);
+}
+.recovery-stage {
+  font-weight: 700;
+}
+.step {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  margin-top: 12px;
+}
+.step h3 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--muted);
+}
+.visit-summary, .visit-confirmed {
+  margin: 0;
+  font-size: 14px;
+}
+.new-visit[hidden], .visit-summary[hidden] {
+  display: none;
+}
+.send-why {
+  margin: 8px 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.edit-note-row {
+  margin-top: 12px;
+  display: flex;
+}
+.edit-note {
+  padding: 8px 12px;
+  font-size: 14px;
+}

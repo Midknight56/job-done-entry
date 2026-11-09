@@ -1,11 +1,15 @@
 // @ts-check
 // The drop rule. Code, not the prompt, decides what reaches the screen:
 // 1. every id in a final proposal must appear in a tool result from this turn;
-// 2. every figure in any text must be a figure from this turn's tool results or from what was said, or its sentence
-//    is removed;
+// 2. in every text the model writes (invoice summary and note, booking summary, waiting summary, reminder text, answer,
+//    new customer name) a sentence that states an amount no tool returned and nobody said is removed. A whole number
+//    from 0 to 12 is a count or a clock hour unless a currency sign or word goes with it;
 // 3. a part cost must have been said, and labour hours must match the duration that was said;
 // 4. cash may not be more than the invoice's due amount, and the amount must have been said;
-// 5. a name with no customer match becomes "new customer, confirm details" and cannot be invoiced.
+// 5. a name with no customer match becomes "new customer, confirm details" and cannot be invoiced;
+// 7. a booking takes the earliest free slot that find_slots returned;
+// 8. in an answer, when invoices were read, each amount must be the due or total of an invoice read this turn, or the
+//    sum of what is due; code links the invoice behind each amount, and a sentence with any other amount is removed.
 // Recipients (rule 6) are checked before any PayPal call, in src/paypal/invoices.js.
 
 import { costWasSaid, cashAmountWasSaid, durationHours, durationNeedsClarification, numbersIn } from '../pricing/words.js'
@@ -36,21 +40,45 @@ export function backedFigures(ctx) {
   return cents
 }
 
+// Currency signs and words. Kept as regular expressions so no string escaping can break them.
+const SIGNS = /[$£€¥₹]\s?/g
+const DIGIT_FIGURE = /([$£€¥₹]\s?)?\b\d[\d,]*(\.\d+)?\b(?=(\s*(?:dollars?|bucks?|cad|usd)\b)?)/gi
+const DIGITS_ONLY = /[$£€¥₹]?\s?\b\d[\d,]*(\.\d+)?\b/g
+const WORDS_THEN_CURRENCY = /((?:[a-z]+[\s-]+){1,4})(?:dollars?|bucks?|cad|usd)\b/gi
+
 /**
- * The figures a sentence states. Small whole numbers (0 to 12) written without a currency sign or decimals are
- * counts and clock hours, not money, and are left alone.
+ * The figures a sentence states, each marked as money or not. A figure is money when a currency sign goes before it,
+ * a currency word follows it, or it has exactly two decimals. Number words count when a currency word follows them,
+ * or when they are above 12.
+ * @param {string} sentence the sentence with its currency signs still in it
+ * @returns {{ n: number, money: boolean }[]}
+ */
+function figuresIn(sentence) {
+  const out = []
+  for (const m of sentence.matchAll(DIGIT_FIGURE)) {
+    const n = Number(m[0].replace(SIGNS, '').replace(/[,\s]/g, ''))
+    const money = Boolean(m[1] || m[3] || (m[2] && m[2].length === 3))
+    out.push({ n, money })
+  }
+  const words = sentence.replace(DIGITS_ONLY, ' ')
+  const withCurrency = new Set()
+  for (const m of words.matchAll(WORDS_THEN_CURRENCY)) {
+    const found = numbersIn(m[1])
+    if (found.length) withCurrency.add(found[found.length - 1])
+  }
+  for (const n of numbersIn(words)) {
+    if (withCurrency.has(n)) out.push({ n, money: true })
+    else if (n > 12) out.push({ n, money: false })
+  }
+  return out
+}
+
+/**
+ * The figures a sentence states that the drop rule checks: everything except small whole numbers that are not money.
  * @param {string} sentence
  */
 function statedFigures(sentence) {
-  const out = []
-  const digits = /(\$\s?)?\b\d[\d,]*(\.\d+)?\b/g
-  for (const m of sentence.matchAll(digits)) {
-    const n = Number(m[0].replace(/[$,\s]/g, ''))
-    if (!m[1] && !m[2] && Number.isInteger(n) && n <= 12) continue
-    out.push(n)
-  }
-  for (const n of numbersIn(sentence.replace(/\$?\b\d[\d,]*(\.\d+)?\b/g, ' '))) if (n > 12) out.push(n)
-  return out
+  return figuresIn(sentence).filter((f) => f.money || !Number.isInteger(f.n) || f.n > 12).map((f) => f.n)
 }
 
 /**
@@ -61,14 +89,14 @@ export function scrubText(text, ctx) {
   const backed = backedFigures(ctx)
   const kept = []
   const removed = []
-  // Amounts are shown plain, in the rate card's currency. A model once wrote a pound sign on a dollar invoice
-  // (recorded 23 Oct 2026), so every currency sign is taken out.
-  const plain = String(text || '').replace(/[$Â£â‚¬Â¥â‚¹]\s?/g, '')
-  for (const sentence of plain.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean)) {
+  for (const sentence of String(text || '').split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean)) {
+    // Each sentence is judged with its currency signs, so "$5" counts as money.
     if (statedFigures(sentence).every((n) => backed.has(toCents(n)))) kept.push(sentence)
     else removed.push(sentence)
   }
-  return { text: kept.join(' '), removed }
+  // Amounts are shown plain, in the rate card's currency. A model once wrote a pound sign on a dollar invoice
+  // (recorded 23 Oct 2026), so every currency sign is taken out.
+  return { text: kept.join(' ').replace(SIGNS, ''), removed }
 }
 
 const DROP = (reason) => ({ ok: /** @type {const} */ (false), reason })
@@ -93,7 +121,7 @@ export function checkFinal(final, ctx) {
   all(ctx.results, 'open_invoices').forEach((r) => (r.invoices || []).forEach((i) => invoices.set(i.invoice_id, i)))
   const step = ctx.stepMinutes || 15
 
-  const newCustomer = () => ({ ok: /** @type {const} */ (true), proposal: { kind: 'new_customer', name: String(final.customer_name || '').slice(0, 60) || 'New customer' } })
+  const newCustomer = () => ({ ok: /** @type {const} */ (true), proposal: { kind: 'new_customer', name: scrubText(String(final.customer_name || '').slice(0, 60), ctx).text || 'New customer' } })
 
   switch (final.kind) {
     case 'waiting': {
@@ -139,10 +167,13 @@ export function checkFinal(final, ctx) {
     case 'booking': {
       if (!final.customer_id || final.customer_id === 'new') return searched ? newCustomer() : DROP('not backed by a tool result')
       if (!customers.has(final.customer_id) || !slots.has(final.slot_id)) return DROP('not backed by a tool result')
-      const slot = all(ctx.results, 'find_slots').flatMap((r) => r.slots || []).find((s) => s.id === final.slot_id)
+      const first = all(ctx.results, 'find_slots').at(-1)?.slots?.[0]
+      if (!first || first.id !== final.slot_id) return DROP('not the first free slot')
+      const slot = first
       const hours = durationHours(ctx.transcript, 1) ?? 1
       if ((Date.parse(slot.end) - Date.parse(slot.start)) / 3600000 !== hours) return DROP('the visit length does not match what was said')
-      return { ok: true, proposal: { kind: 'booking', customer_id: final.customer_id, slot_id: final.slot_id, summary: String(final.summary || 'Job').slice(0, 80) } }
+      const summary = scrubText(String(final.summary || '').slice(0, 80), ctx).text || 'Job'
+      return { ok: true, proposal: { kind: 'booking', customer_id: final.customer_id, slot_id: final.slot_id, summary } }
     }
     case 'cash': {
       const inv = invoices.get(final.invoice_id)
@@ -161,10 +192,15 @@ export function checkFinal(final, ctx) {
       return { ok: true, proposal: { kind: 'reminder', invoice_id: final.invoice_id, text: s.text }, removed: s.removed }
     }
     case 'answer': {
-      const s = scrubText(final.text, ctx)
+      // Sentences are judged with their currency signs; the signs are stripped from the kept text at the end.
+      const removed = []
+      const backedSentences = []
+      for (const sentence of String(final.text || '').split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean)) {
+        if (scrubText(sentence, ctx).text) backedSentences.push(sentence)
+        else removed.push(sentence)
+      }
       const open = all(ctx.results, 'open_invoices').at(-1)?.invoices || []
-      let text = s.text
-      const removed = [...s.removed]
+      let text = backedSentences.join(' ')
       if (open.length > 1) {
         const dueCounts = new Map()
         let total = 0
@@ -184,8 +220,28 @@ export function checkFinal(final, ctx) {
           text = ''
         }
       }
-      const ids = (Array.isArray(final.invoice_ids) ? final.invoice_ids : []).filter((id) => invoices.has(id))
-      return { ok: true, proposal: { kind: 'answer', text, invoice_ids: ids }, removed }
+      const linked = []
+      if (invoices.size) {
+        // Each amount must belong to an invoice read this turn; code links that invoice.
+        const dueSum = open.reduce((sum, inv) => sum + toCents(Number(inv.due)), 0)
+        const keptSentences = []
+        for (const sentence of text.split(/(?<=[.!?])\s+/).filter(Boolean)) {
+          let backedByInvoice = true
+          for (const f of figuresIn(sentence).filter((x) => x.money)) {
+            const cents = toCents(f.n)
+            const owners = [...invoices.values()].filter((inv) => toCents(Number(inv.due)) === cents || toCents(Number(inv.total)) === cents)
+            if (owners.length) owners.forEach((inv) => linked.push(inv.invoice_id))
+            else if (open.length && cents === dueSum) open.forEach((inv) => linked.push(inv.invoice_id))
+            else backedByInvoice = false
+          }
+          if (backedByInvoice) keptSentences.push(sentence)
+          else removed.push(sentence)
+        }
+        text = keptSentences.join(' ')
+      }
+      const chosen = (Array.isArray(final.invoice_ids) ? final.invoice_ids : []).filter((id) => invoices.has(id))
+      const ids = [...new Set([...linked, ...chosen])]
+      return { ok: true, proposal: { kind: 'answer', text: text.replace(SIGNS, ''), invoice_ids: ids }, removed }
     }
     default:
       return DROP('not a proposal this app makes')

@@ -182,3 +182,69 @@ test('a failed first workspace start shows an error and can be retried', async (
   await expect(page.getByRole('tab', { name: 'Today' })).toBeVisible()
   await expect.poll(() => workspaceAttempts).toBe(2)
 })
+
+test('a lost connection puts the typed note back in the box', async ({ page }) => {
+  await routeState(page)
+  await page.route('**/api/agent', (route) => route.abort())
+  await page.goto('/?calendar=fallback')
+  const box = page.getByRole('textbox', { name: 'Describe the job' })
+  await box.fill('Kitchen tap for Maria, an hour, the tap was 89')
+  await page.getByRole('button', { name: 'Send text' }).click()
+  await expect(page.getByText('No connection. Try again.')).toBeVisible()
+  await expect(box).toHaveValue('Kitchen tap for Maria, an hour, the tap was 89')
+})
+
+test('a server error puts the typed note back in the box', async ({ page }) => {
+  await routeState(page)
+  await page.route('**/api/agent', (route) => route.fulfill({ status: 429, json: { error: 'busy', message: 'That is enough for today. Try again tomorrow.' } }))
+  await page.goto('/?calendar=fallback')
+  const box = page.getByRole('textbox', { name: 'Describe the job' })
+  await box.fill('Leak check for Priya, half an hour')
+  await page.getByRole('button', { name: 'Send text' }).click()
+  await expect(page.getByText('That is enough for today. Try again tomorrow.')).toBeVisible()
+  await expect(box).toHaveValue('Leak check for Priya, half an hour')
+})
+
+test('a question back keeps the words in the box to fix and send again', async ({ page }) => {
+  await routeState(page)
+  const answers = [{ proposal: null, message: 'How long is the visit? Say one length in hours and minutes.', state: makeState() },
+    { proposal: invoiceProposal(), message: null, state: makeState() }]
+  await page.route('**/api/agent', (route) => route.fulfill({ json: answers.shift() }))
+  await page.goto('/?calendar=fallback')
+  const box = page.getByRole('textbox', { name: 'Describe the job' })
+  // The words speech to text heard: "hour in a half" is not a length the app can read.
+  await box.fill('Kitchen tap for Maria at 14 Elm, hour in a half, the tap was 89')
+  await page.getByRole('button', { name: 'Send text' }).click()
+  await expect(page.getByText('How long is the visit? Say one length in hours and minutes.')).toBeVisible()
+  await expect(box).toHaveValue('Kitchen tap for Maria at 14 Elm, hour in a half, the tap was 89')
+  await box.fill('Kitchen tap for Maria at 14 Elm, an hour and a half, the tap was 89')
+  await page.getByRole('button', { name: 'Send text' }).click()
+  await expect(page.locator('#screen article.card')).toContainText('Kitchen tap repair')
+  await expect(box).toHaveValue('')
+})
+
+test('Edit job note puts the note back without any request, and a resend gives a fresh draft', async ({ page }) => {
+  await routeState(page)
+  const second = { ...invoiceProposal(), summary: 'Kitchen tap and washer' }
+  const answers = [invoiceProposal(), second]
+  await page.route('**/api/agent', (route) => route.fulfill({ json: { proposal: answers.shift(), message: null, state: makeState() } }))
+  const requests = []
+  page.on('request', (r) => { if (/\/api\/(agent|drafts|invoices)|paypal/.test(r.url())) requests.push(r.url()) })
+  await page.goto('/?calendar=fallback')
+  const box = page.getByRole('textbox', { name: 'Describe the job' })
+  await box.fill('Kitchen tap for Maria, an hour, the tap was 89')
+  await page.getByRole('button', { name: 'Send text' }).click()
+  const draft = page.locator('#screen article.card')
+  await expect(draft).toContainText('Kitchen tap repair')
+  await expect(box).toHaveValue('')
+  const before = requests.length
+  await page.waitForTimeout(4_000) // a state poll redraws the card; the note stays
+  await draft.getByRole('button', { name: 'Edit job note' }).click()
+  await expect(box).toHaveValue('Kitchen tap for Maria, an hour, the tap was 89')
+  await expect(box).toBeFocused()
+  expect(requests.slice(before)).toEqual([])
+  await box.fill('Kitchen tap for Maria, an hour, the tap was 89, and a washer')
+  await page.getByRole('button', { name: 'Send text' }).click()
+  await expect(draft).toContainText('Kitchen tap and washer')
+  expect(requests.filter((u) => /\/send|paypal/.test(u))).toEqual([])
+})

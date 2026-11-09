@@ -42,7 +42,7 @@ row('new demo', made.status === 200 && dave?.status === 'SENT', `HTTP ${made.sta
 
 const maria = await say('Kitchen tap for Maria at 14 Elm, hour and a half, the tap was 89, she wants the bathroom one done next week.')
 const p = maria.json.proposal
-row('Maria draft', p?.kind === 'invoice' && p.priced.total === '282.42', `HTTP ${maria.status}; ${p?.kind} total ${p?.priced?.total}; sources ${p?.priced?.lines.map((l) => l.source).join(', ')}${p?.message ? `; ${p.message}` : ''}`)
+row('Maria draft', p?.kind === 'invoice' && p.priced.total === '282.42', `HTTP ${maria.status} in ${maria.ms} ms; ${p?.kind} total ${p?.priced?.total}; sources ${p?.priced?.lines.map((l) => l.source).join(', ')}${p?.message ? `; ${p.message}` : ''}`)
 
 const visitEnd = Math.floor(Date.now() / 300_000) * 300_000
 const visitStart = visitEnd - 90 * 60_000

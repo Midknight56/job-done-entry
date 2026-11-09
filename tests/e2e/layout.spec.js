@@ -21,9 +21,16 @@ async function measure(page) {
     // With the QR sheet open, only its own controls can be touched.
     const sheet = document.querySelector('#sheet:not([hidden])')
     for (const el of (sheet || document).querySelectorAll(sheet ? 'button, a.button' : '.phone button, .phone a.button')) {
-      const r = el.getBoundingClientRect()
+      const full = el.getBoundingClientRect()
       const style = getComputedStyle(el)
-      if (r.width === 0 || r.height === 0 || style.visibility === 'hidden' || el.closest('[hidden]')) continue
+      if (full.width === 0 || full.height === 0 || style.visibility === 'hidden' || el.closest('[hidden]')) continue
+      // Only the part a person can see counts: a scrolling area clips what is scrolled out of it.
+      let clip = el.parentElement
+      while (clip && !/(auto|scroll|hidden)/.test(getComputedStyle(clip).overflowY)) clip = clip.parentElement
+      const c = clip ? clip.getBoundingClientRect() : { top: -Infinity, bottom: Infinity, left: -Infinity, right: Infinity }
+      const top = Math.max(full.top, c.top), bottom = Math.min(full.bottom, c.bottom)
+      if (bottom - top < 1) continue
+      const r = { left: full.left, right: full.right, width: full.width, top, bottom, height: bottom - top }
       if (el.closest('.b-calendar')) continue // Bryntum's own toolbar is measured by Bryntum
       const name = (el.innerText || el.getAttribute('aria-label') || el.className).trim().slice(0, 30)
       const pad = Math.min(...['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft'].map((k) => parseFloat(style[k])))

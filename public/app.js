@@ -289,6 +289,8 @@ function renderToday() {
   if (proposal) {
     const card = renderProposal(proposal, {
       state, money, esc, customer, post, submitText,
+      // Puts the note back in the box to fix it. No request: sending it again goes through submitText as usual.
+      editNote: (text) => { const box = $('#say'); box.value = text; box.focus() },
       openInvoice: (invoiceId) => openInvoiceSheet(invoiceId, state, request),
       onDone: (answer) => {
         if (!validState(answer?.state)) throw { message: 'Something went wrong. Try again.' }
@@ -497,10 +499,42 @@ function renderCalendar() {
     card.append(text, reason, button, decline)
     screen.append(card)
   })
+  renderRecovery()
   renderWaiting()
 }
 
 /** Lists waiting jobs and keeps the add form through state polls. */
+/** The latest freed slot: whose hold ran out, the cancelled deposit, every waiting job considered, and its stage. */
+function renderRecovery() {
+  const latest = Object.values(state.ws.recoveries || {}).sort((a, b) => b.at - a.at || String(b.id).localeCompare(String(a.id)))[0]
+  if (!latest) return
+  const stageWords = { 'no offer': 'No offer made', 'slot offered': 'Slot offered', 'deposit requested': 'Deposit requested', 'booking confirmed': 'Booking confirmed', 'hold ran out': 'Hold ran out' }
+  const resultWords = { chosen: 'Chosen', 'too long': 'Too long', 'not free': 'Not free', passed: 'Passed' }
+  const panel = document.createElement('details')
+  panel.className = 'recovery'
+  panel.open = true
+  const summary = document.createElement('summary')
+  summary.textContent = 'Why this slot was offered'
+  const slot = document.createElement('p')
+  slot.textContent = `${latest.slot?.label || ''}: ${latest.customer} did not pay the deposit in time.`
+  const cancelled = document.createElement('p')
+  cancelled.textContent = `Deposit invoice ${latest.cancelledInvoiceId} cancelled.`
+  const list = document.createElement('ol')
+  for (const c of latest.candidates || []) {
+    const item = document.createElement('li')
+    item.dataset.result = c.result
+    const word = document.createElement('strong')
+    word.textContent = `${resultWords[c.result] || c.result}: `
+    item.append(word, `${c.customer}, ${c.hours} h. ${c.reason || ''}`)
+    list.append(item)
+  }
+  const stage = document.createElement('p')
+  stage.className = 'recovery-stage'
+  stage.textContent = latest.note || stageWords[latest.stage] || ''
+  panel.append(summary, slot, cancelled, list, stage)
+  screen.append(panel)
+}
+
 function renderWaiting() {
   const section = document.createElement('section')
   section.className = 'waiting-list'
@@ -767,12 +801,16 @@ async function submitText(text) {
   if (!text.trim() || sendingText) return
   sendingText = true
   $('#sendText').disabled = true
-  $('#say').value = ''
   try {
     const answer = await post('/api/agent', { text })
     if (!answer || !validState(answer.state) || !Object.hasOwn(answer, 'proposal')) throw { message: 'Something went wrong. Try again.' }
     if (answer.proposal && !validProposal(answer.proposal)) throw { message: 'Something went wrong. Try again.' }
+    // The box is cleared only when a card came back. A failed request or a question back ("How long is the visit?")
+    // leaves the words, typed or heard, in the box to fix and send again.
+    if (answer.proposal && $('#say').value === text) $('#say').value = ''
     proposal = answer.proposal
+    // The note stays on the page with its card, for Edit job note. It is never sent again by itself.
+    if (proposal) proposal.note = text
     message = answer.message
     tab = 'today'
     setState(answer.state)

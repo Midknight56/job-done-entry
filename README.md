@@ -28,9 +28,15 @@ drafts one invoice priced from your own rate card, and each line says where its 
 sends a real PayPal sandbox invoice and shows its QR code, which the customer scans and pays on the doorstep. The job
 turns green on the calendar when PayPal says it is paid.
 
-The calendar acts on money. A follow up is booked into a free slot with a small deposit invoice that holds it. If the
-deposit is not paid in time, the app cancels that invoice, frees the slot, and moves the next waiting job into it,
-with that job's deposit ready for one tap.
+The calendar acts on money. A follow up is offered in the earliest free slot in the period you asked for. Sending its
+small deposit invoice holds the slot, and paying it confirms the booking. When that visit is billed, the paid deposit
+comes off the final bill. If the deposit is not paid in time, the app cancels that invoice, frees the slot, and offers
+it to the first waiting job that fits in length and whose customer is free then. That job's deposit request waits for
+your tap. A "Why this slot was offered" panel lists each waiting job it checked and why it was passed over or chosen.
+
+The invoice card reads in three steps: 1 Job, 2 Visit, 3 Payment. Until the visit is confirmed, the card says why Send
+waits. A misheard note is easy to fix: "Edit job note" puts the words back in the box. If a request fails or the app asks
+back, what you said or typed stays in the box to fix.
 
 This project uses the PayPal sandbox only. No real money moves. Every invoice goes to a sandbox test account or to an
 address at example.com, and the code refuses any other address.
@@ -71,8 +77,8 @@ up, the demo lines are answered from recorded model output, labelled on screen, 
 | PayPal Webhooks | Paid and cancelled events, each checked with PayPal's signature verification first |
 | Whisper on Workers AI | Speech to text, 30 seconds at most |
 | IBM Granite 4.0 H Micro on Workers AI | Calls the app's read only tools: find the customer, price lines from the rate card, find free slots, read open invoices |
-| The guard (`src/agent/guard.js`) | Drops any proposal that names an id no tool returned, any figure no tool returned, a part cost that was not said, or hours that do not match the time said |
-| Bryntum Calendar | The week, each job coloured by its money state; the agent's moves are applied to its event store so they animate |
+| The guard (`src/agent/guard.js`) | Drops any proposal that names an id no tool returned, a part cost that was not said, hours that do not match the time said, or a booking that is not the earliest free slot. Removes any sentence in model text that states an amount no tool returned and nobody said. Links each amount in an answer to its invoice |
+| Bryntum Calendar | Day and week views (it opens on the day), each job coloured by its money state; the agent's moves are applied to its event store so they animate |
 | Cloudflare Worker, Durable Objects and KV | One Worker serves the pages and API; each workspace lives in a Durable Object. KV keeps the invoice index, expired workspace markers and daily counters. |
 
 The model never sets a price, and a person taps before any invoice or reminder reaches a customer.

@@ -21,7 +21,7 @@ import { seedWorkspace, publicView, pushPanel, pushNotice, job, addCustomer } fr
 import { WorkspaceDO } from './state/workspace-do.js'
 import { CapsDO } from './state/caps-do.js'
 import { moveJob } from './state/schedule.js'
-import { acceptOffer, declineOffer, dropStaleDrafts, releaseExpired, sendDeposit } from './state/holds.js'
+import { acceptOffer, declineOffer, dropStaleDrafts, recoveryStage, releaseExpired, sendDeposit } from './state/holds.js'
 import { addWaiting, updateWaiting, removeWaiting } from './state/waiting.js'
 import { applyStatus } from './state/money.js'
 import { loadWs, saveWs, indexInvoice, loadCounter, reserveCaps } from './store.js'
@@ -605,6 +605,8 @@ async function stateOf(ws, budget, ipKey, day, now, env) {
   const left = await budget.left({ ipKey, day })
   const view = publicView(ws)
   view.invoices = Object.fromEntries(Object.entries(view.invoices).map(([k, v]) => [k, { ...v, qr: undefined, hasQr: Boolean(v.qr) }]))
+  // Each freed slot's stage is worked out from state here, never stored.
+  view.recoveries = Object.fromEntries(Object.entries(ws.recoveries || {}).map(([k, r]) => [k, { ...r, stage: recoveryStage(ws, r) }]))
   return {
     now,
     cursor: ws.cursor,

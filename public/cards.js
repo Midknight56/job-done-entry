@@ -19,14 +19,29 @@ export function renderProposal(proposal, helpers) {
     </tr>`).join('')
     card.innerHTML = `<span class="pill card-status">Draft</span>
       <h2>${esc(proposal.customer)}</h2>
+      <section class="step step-job"><h3>1 Job</h3>
       <p>${esc(proposal.summary)}</p>
       <table class="line-table"><tbody>${rows}</tbody></table>
       <div class="totals"><span>Items</span><span>${money(priced.itemTotal)}</span></div>
       <div class="totals"><span>Tax ${esc(priced.taxPercent)}%</span><span>${money(priced.tax)}</span></div>
       ${priced.depositCredit ? `<div class="totals"><span>Job price</span><span>${money(priced.jobTotal)}</span></div><div class="totals"><span>Paid deposit</span><span>${money(priced.depositTotal || priced.depositCredit)}</span></div><div class="totals"><span>Applied credit</span><span>${money(priced.depositCredit)}</span></div>${Number(priced.depositRetained) < Number(priced.depositTotal) ? `<div class="totals"><span>Deposit retained</span><span>${money(priced.depositRetained)}</span></div>` : ''}${Number(priced.depositSurplus) > 0 ? `<div class="totals"><span>Surplus to resolve</span><span>${money(priced.depositSurplus)}</span></div><p>Agree how to return or use the surplus.</p>` : ''}` : ''}
       <div class="totals total"><span>${priced.depositCredit ? 'Remaining balance' : 'Total'}</span><span>${money(priced.total)}</span></div>
+      </section>
+      <section class="step step-visit"><h3>2 Visit</h3></section>
+      <section class="step step-pay"><h3>3 Payment</h3>
       ${covered ? '<label><input type="checkbox" name="completeConfirmed"> I confirm this job is complete.</label>' : ''}
-      <button class="primary">${covered ? 'Complete job' : `Send ${money(priced.total)}`}</button>`
+      <button class="primary">${covered ? 'Complete job' : `Send ${money(priced.total)}`}</button>
+      </section>`
+    const visitStep = card.querySelector('.step-visit')
+    const person = state.ws.customers?.find((c) => c.id === proposal.customerId)
+    const localTime = (value, style) => new Date(Date.parse(value) + state.ws.tz * 60000).toLocaleString([], { timeZone: 'UTC', ...style })
+    const length = (start, end) => {
+      const minutes = Math.round((Date.parse(end) - Date.parse(start)) / 60000)
+      const h = Math.floor(minutes / 60), m = minutes % 60
+      return [h ? `${h} h` : '', m ? `${m} min` : ''].filter(Boolean).join(' ') || '0 min'
+    }
+    // Customer, address, start, end and length of a visit, in the calendar time zone.
+    const visitLine = (visit) => `${person ? `${person.name}${person.address ? `, ${person.address}` : ''}. ` : ''}${localTime(visit.start, { dateStyle: 'medium', timeStyle: 'short' })} to ${localTime(visit.end, { timeStyle: 'short' })}, ${length(visit.start, visit.end)}`
     const choice = (name, text) => {
       const label = document.createElement('label')
       label.className = 'pay-choice'
@@ -69,13 +84,24 @@ export function renderProposal(proposal, helpers) {
       const localLabel = (value) => new Date(Date.parse(value) + state.ws.tz * 60000).toLocaleString([], { timeZone: 'UTC', dateStyle: 'medium', timeStyle: 'short' })
       form.innerHTML = `<p>Choose the visit for this invoice. Or enter a completed visit.</p>
         <label>Visit <select name="jobId"><option value="">New completed visit</option>${visits.map((job) => `<option value="${esc(job.id)}">${esc(job.summary)}. ${esc(localLabel(job.start))}</option>`).join('')}</select></label>
+        <p class="visit-summary"></p>
+        <div class="new-visit">
         <label>Start <input type="datetime-local" name="start"></label>
         <label>End <input type="datetime-local" name="end"></label>
-        <p>Times use the calendar time zone.</p><button type="submit">Confirm visit</button>`
+        <p>Times use the calendar time zone.</p></div><button type="submit">Confirm visit</button>`
+      // An existing visit shows its summary; only a new completed visit asks for times.
+      const showChoice = () => {
+        const chosen = visits.find((job) => job.id === proposal.visitFields.jobId)
+        const summary = form.querySelector('.visit-summary')
+        summary.textContent = chosen ? visitLine(chosen) : ''
+        summary.hidden = !chosen
+        form.querySelector('.new-visit').hidden = Boolean(chosen)
+      }
       for (const control of form.querySelectorAll('input, select')) {
         control.value = proposal.visitFields[control.name]
-        control.onchange = control.oninput = () => { proposal.visitFields[control.name] = control.value }
+        control.onchange = control.oninput = () => { proposal.visitFields[control.name] = control.value; if (control.name === 'jobId') showChoice() }
       }
+      showChoice()
       form.onsubmit = async (event) => {
         event.preventDefault()
         const button = form.querySelector('button')
@@ -96,13 +122,22 @@ export function renderProposal(proposal, helpers) {
         } catch (error) { onError(error) } finally { proposal.confirmingVisit = false; button.disabled = false }
       }
       form.querySelector('button').disabled = Boolean(proposal.confirmingVisit)
-      send.before(form)
-    } else if (proposal.jobId) {
-      const visit = state.ws.jobs.find((job) => job.id === proposal.jobId)
+      visitStep.append(form)
+      const why = document.createElement('p')
+      why.className = 'send-why'
+      why.textContent = 'Confirm the visit to send.'
+      send.before(why)
+    } else {
+      const visit = proposal.jobId ? state.ws.jobs.find((job) => job.id === proposal.jobId) : undefined
       if (visit) {
         const label = document.createElement('p')
-        label.textContent = `Visit confirmed. ${new Date(Date.parse(visit.start) + state.ws.tz * 60000).toLocaleString([], { timeZone: 'UTC', dateStyle: 'medium', timeStyle: 'short' })}`
-        send.before(label)
+        label.className = 'visit-confirmed'
+        label.textContent = `Visit confirmed. ${visitLine(visit)}`
+        visitStep.append(label)
+      } else {
+        // No visit to show: the payment step becomes step 2.
+        visitStep.remove()
+        card.querySelector('.step-pay h3').textContent = '2 Payment'
       }
     }
     // Above the lines, so the sticky Send button never covers it.
@@ -112,6 +147,9 @@ export function renderProposal(proposal, helpers) {
     if (!covered) options.append(choice('tip', 'Allow a tip'))
     if (Number(priced.total) > Number(deposit)) options.append(choice('part', `Allow part now, at least ${money(deposit)}`))
     send.before(options)
+    // The reason Send is waiting sits right above Send.
+    const why = card.querySelector('.send-why')
+    if (why) send.before(why)
     action = covered
       ? () => post(`/api/drafts/${encodeURIComponent(proposal.draftId)}/complete`, { confirmed: proposal.completeConfirmed === true })
       : () => post(`/api/drafts/${encodeURIComponent(proposal.draftId)}/send`, { tip: proposal.choices.tip, part: proposal.choices.part })
@@ -248,6 +286,18 @@ export function renderProposal(proposal, helpers) {
         onError(error)
       }
     }
+  }
+  // The note this card came from can go back in the box to be fixed. The tap sends nothing.
+  if (proposal.note && helpers.editNote) {
+    const row = document.createElement('div')
+    row.className = 'edit-note-row'
+    const edit = document.createElement('button')
+    edit.type = 'button'
+    edit.className = 'edit-note'
+    edit.textContent = 'Edit job note'
+    edit.onclick = () => helpers.editNote(proposal.note)
+    row.append(edit)
+    card.append(row)
   }
   const identity = proposal.draftId || proposal.invoiceId || proposal.kind
   card.querySelectorAll('button, input, textarea').forEach((control, index) => {

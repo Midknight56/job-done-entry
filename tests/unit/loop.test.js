@@ -188,7 +188,7 @@ describe('other turns', () => {
     expect(model.seen).toHaveLength(2)
   })
 
-  it('keeps the second slot when the model called find_slots and chose it', async () => {
+  it('takes the first free slot even when the model called find_slots and chose a later one', async () => {
     const ws = seedWorkspace({ id: 'w1', now: NOW, tzOffsetMinutes: 0 })
     const model = fakeModel([
       { calls: [{ tool: 'find_customer', args: { name: 'Maria' } }, { tool: 'find_slots', args: {} }] },
@@ -196,7 +196,7 @@ describe('other turns', () => {
     ])
     const out = await runTurn(ws, 'Book the bathroom tap for Maria next week.', { callModel: model.call, now: NOW })
     expect(out.proposal.kind).toBe('booking')
-    expect(out.proposal.slot.id).toBe('s3')
+    expect(out.proposal.slot.id).toBe('s1')
   })
 
   it('asks which day when a booking has no date and skipped find_slots', async () => {
@@ -217,7 +217,8 @@ describe('other turns', () => {
     ])
     const out = await runTurn(ws, 'Book the bathroom tap for Maria next week', { callModel: model.call, now: NOW })
     expect(out.proposal).toMatchObject({ kind: 'booking', customerId: 'c1', deposit: '50.00' })
-    expect(out.proposal.slot.label).toBe('Mon 2 Nov 9:00')
+    expect(out.proposal.slot.id).toBe('s1')
+    expect(out.proposal.slot.label).toBe('Mon 2 Nov 8:00')
     expect(out.proposal.reason).toBe('One hour by default. First free time in the period you asked for. A 50.00 deposit holds it.')
     expect(ws.jobs.find((j) => j.id === out.proposal.jobId).state).toBe('draft')
   })

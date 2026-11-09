@@ -1,7 +1,7 @@
 // @ts-check
 // Holds: the calendar that acts on money. A booked slot waits for its deposit; when the hold runs out unpaid the
-// deposit invoice is cancelled, the slot is freed and the first waiting job that fits is moved in, with its own
-// deposit drafted for one tap. The agent moves the calendar by itself; money requests always wait for a tap.
+// deposit invoice is cancelled, the slot is freed and offered to the first waiting job that fits, with its own
+// deposit drafted for one tap. A recovery record keeps every job considered and why. Money requests always wait for a tap.
 import { proposeInvoiceDraft, sendDraft } from '../flows/send.js'
 import { cancelInvoice, getInvoice } from '../paypal/invoices.js'
 import { depositPriced } from '../pricing/ratecard.js'
@@ -126,29 +126,70 @@ function release(ws, hold, now) {
   if (ws.invoices[hold.invoiceId]) ws.invoices[hold.invoiceId].status = 'CANCELLED'
   const label = slotLabel(ws, hold.start)
   pushNotice(ws, { at: now, text: `Hold ran out on ${label}. Slot freed.` })
-  offerNext(ws, hold.start, hold.end, now)
+  const record = startRecovery(ws, hold, label, now)
+  offerNext(ws, hold.start, hold.end, now, undefined, record)
 }
 
-/** @param {any} ws @param {string} start @param {string} end @param {number} now @param {string} [skipJobId] */
-function offerNext(ws, start, end, now, skipJobId) {
+const RECOVERIES_KEEP = 10
+
+/**
+ * The record of one freed slot: whose hold ran out, the cancelled deposit invoice, every waiting job considered with
+ * the reason it was skipped or chosen, and the offer made. Its stage is worked out from state by recoveryStage().
+ * @param {any} ws @param {any} hold @param {string} label @param {number} now
+ */
+function startRecovery(ws, hold, label, now) {
+  ws.recoveries ||= {}
+  const id = nextId(ws, 'r')
+  const held = job(ws, hold.jobId)
+  const record = { id, at: now, holdJobId: hold.jobId, customer: customer(ws, held?.customerId)?.name || 'A customer', slot: { start: hold.start, end: hold.end, label }, cancelledInvoiceId: hold.invoiceId, candidates: [], offerId: null, offerIds: [], note: '' }
+  ws.recoveries[id] = record
+  const ids = Object.values(ws.recoveries).sort((a, b) => a.at - b.at || a.id.localeCompare(b.id)).map((r) => r.id)
+  for (const old of ids.slice(0, Math.max(0, ids.length - RECOVERIES_KEEP))) delete ws.recoveries[old]
+  return record
+}
+
+/**
+ * Where a freed slot stands, from state only: an offer alone is never counted as money.
+ * @param {any} ws @param {any} record
+ * @returns {'no offer' | 'slot offered' | 'deposit requested' | 'booking confirmed' | 'hold ran out'}
+ */
+export function recoveryStage(ws, record) {
+  const offer = record?.offerId ? ws.offers?.[record.offerId] : undefined
+  if (!offer) return 'no offer'
+  if (!offer.accepted) return 'slot offered'
+  const next = job(ws, offer.jobId)
+  if (next?.depositPaid) return 'booking confirmed'
+  if (next?.state === 'released') return 'hold ran out'
+  return 'deposit requested'
+}
+
+/** @param {any} ws @param {string} start @param {string} end @param {number} now @param {string} [skipJobId] @param {any} [record] */
+function offerNext(ws, start, end, now, skipJobId, record) {
   const label = slotLabel(ws, start)
   const length = (Date.parse(end) - Date.parse(start)) / 3_600_000
-  if (Object.values(ws.offers).some((offer) => !offer.accepted && offer.start && offer.end && Date.parse(offer.start) < Date.parse(end) && Date.parse(offer.end) > Date.parse(start))) return
+  if (Object.values(ws.offers).some((offer) => !offer.accepted && offer.start && offer.end && Date.parse(offer.start) < Date.parse(end) && Date.parse(offer.end) > Date.parse(start))) {
+    if (record) record.note = 'An offer for this time is still open.'
+    return
+  }
   let skipped = ''
+  /** @type {any[]} */
+  const considered = []
   const index = ws.waiting.findIndex((id, i, list) => {
     const candidate = job(ws, id)
     if (id === skipJobId || list.indexOf(id) !== i || candidate?.state !== 'waiting' || !Number.isFinite(candidate.hours) || candidate.hours <= 0) return false
     const fits = candidate.hours <= length
     const available = fits && freeFor(ws, candidate, start, new Date(Date.parse(start) + candidate.hours * 3_600_000).toISOString())
-    if (!available && !skipped) {
-      const person = customer(ws, candidate.customerId)
-      const name = person?.given || person?.name.split(' ')[0] || 'This customer'
-      skipped = fits ? `${name} is not free then.` : `${name} needs ${candidate.hours} hours.`
-    }
+    const person = customer(ws, candidate.customerId)
+    const name = person?.given || person?.name.split(' ')[0] || 'This customer'
+    const why = fits ? `${name} is not free then.` : `${name} needs ${candidate.hours} hours.`
+    if (!available && !skipped) skipped = why
+    considered.push({ jobId: id, customer: person?.name || name, hours: candidate.hours, result: available ? 'chosen' : fits ? 'not free' : 'too long', reason: available ? '' : why })
     return available
   })
+  if (record) record.candidates.push(...considered)
   if (index < 0) {
     pushNotice(ws, { at: now, text: `No one on the waiting list fits ${label}.` })
+    if (record) { record.offerId = null; record.note = 'No one on the waiting list fits.' }
     return
   }
   const waitingId = ws.waiting.splice(index, 1)[0]
@@ -165,8 +206,16 @@ function offerNext(ws, start, end, now, skipJobId) {
   const day = label.split(' ')[0]
   const free = next.free || 'any'
   const when = free === 'mornings' || free === 'afternoons' ? `${day} ${free}` : Array.isArray(free) ? `on ${day}` : 'then'
-  const reason = `${first} was first on the waiting list who fits ${next.hours} ${next.hours === 1 ? 'hour' : 'hours'} and is free ${when}.${skipped ? ` ${skipped}` : ''}`
+  const fitReason = `${first} was first on the waiting list who fits ${next.hours} ${next.hours === 1 ? 'hour' : 'hours'} and is free ${when}.`
+  const reason = `${fitReason}${skipped ? ` ${skipped}` : ''}`
   ws.offers[id] = { id, jobId: next.id, draftId: draft.id, start: next.start, end: next.end, at: now, reason }
+  if (record) {
+    const chosen = record.candidates.findLast((c) => c.jobId === next.id && c.result === 'chosen')
+    if (chosen) chosen.reason = fitReason
+    record.offerId = id
+    record.offerIds.push(id)
+    record.note = ''
+  }
   pushNotice(ws, { at: now, kind: 'offer', text: `Offered ${label} to ${name}. ${reason} The deposit waits for your tap.` })
 }
 
@@ -219,5 +268,7 @@ export function declineOffer(ws, offerId, now) {
   ws.waiting = ws.waiting.filter((id) => id !== j.id)
   ws.waiting.push(j.id)
   pushNotice(ws, { at: now, text: `${customer(ws, j.customerId)?.name || 'A customer'} passed on ${slotLabel(ws, offer.start)}.` })
-  offerNext(ws, offer.start, offer.end, now, j.id)
+  const record = Object.values(ws.recoveries || {}).find((r) => r.offerIds?.includes(offerId))
+  if (record) record.candidates.push({ jobId: j.id, customer: customer(ws, j.customerId)?.name || 'A customer', hours: j.hours, result: 'passed', reason: 'Passed on this time.' })
+  offerNext(ws, offer.start, offer.end, now, j.id, record)
 }

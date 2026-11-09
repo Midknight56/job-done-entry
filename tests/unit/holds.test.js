@@ -3,7 +3,7 @@ import { resetTokenCache } from '../../src/paypal/token.js'
 import { createPayPal } from '../../src/paypal/client.js'
 import { seedWorkspace, job } from '../../src/state/workspace.js'
 import { findSlots, clashes, moveJob } from '../../src/state/schedule.js'
-import { placeBooking, sendDeposit, releaseExpired, depositPaid, invoiceCancelled, acceptOffer } from '../../src/state/holds.js'
+import { placeBooking, sendDeposit, releaseExpired, depositPaid, invoiceCancelled, acceptOffer, declineOffer, recoveryStage } from '../../src/state/holds.js'
 import { fakePayPal } from './fake-paypal.js'
 
 const ENV = { PAYPAL_CLIENT_ID: 'id-x', PAYPAL_CLIENT_SECRET: 'secret-y', PAYPAL_BUYER_EMAIL: 'persona-buyer@sandbox.test' }
@@ -201,5 +201,76 @@ describe('holds: the calendar that acts on money', () => {
     await releaseExpired(ws, { api: sb.api, now: NOW + 3 * MIN })
     expect(Object.values(ws.offers)).toHaveLength(0)
     expect(job(ws, 'j5').state).toBe('waiting')
+  })
+})
+
+describe('the recovery record', () => {
+  const setup = () => {
+    const ws = seedWorkspace({ id: 'w1', now: NOW, tzOffsetMinutes: 0 })
+    const start = '2026-11-03T09:00:00.000Z' // a Tuesday
+    const end = '2026-11-03T10:00:00.000Z'
+    ws.holds.push({ jobId: 'j1', invoiceId: 'INV2-HOLD', start, end, expiresAt: NOW - 1 })
+    ws.jobs.push({ id: 'dave', customerId: 'c2', summary: 'Bathroom refit', state: 'waiting', hours: 3, free: 'any', start: '', end: '' })
+    ws.jobs.push({ id: 'sam', customerId: 'c3', summary: 'Radiator', state: 'waiting', hours: 1, free: [5], start: '', end: '' })
+    ws.waiting = ['dave', 'sam', 'j5']
+    return ws
+  }
+
+  it('keeps every job considered, why each was skipped, and the one chosen, with no invoice sent', async () => {
+    const ws = setup()
+    const sb = sandbox(['INV2-HOLD'])
+    await releaseExpired(ws, { api: sb.api, now: NOW })
+    const records = Object.values(ws.recoveries)
+    expect(records).toHaveLength(1)
+    const [r] = records
+    expect(r.cancelledInvoiceId).toBe('INV2-HOLD')
+    expect(r.customer).toBe('Dave Chen')
+    expect(r.slot).toMatchObject({ start: '2026-11-03T09:00:00.000Z', end: '2026-11-03T10:00:00.000Z', label: 'Tue 3 Nov 9:00' })
+    expect(r.candidates.map((c) => [c.jobId, c.result])).toEqual([['dave', 'too long'], ['sam', 'not free'], ['j5', 'chosen']])
+    expect(r.candidates[0].reason).toBe('Dave needs 3 hours.')
+    expect(r.candidates[1].reason).toBe('Sam is not free then.')
+    expect(r.candidates[2].reason).toBe('Priya was first on the waiting list who fits 1 hour and is free then.')
+    expect(Object.keys(ws.offers)).toEqual([r.offerId])
+    expect(ws.offers[r.offerId].jobId).toBe('j5')
+    expect(sb.path('POST', '/v2/invoicing/invoices')).toBe(0)
+    expect(recoveryStage(ws, r)).toBe('slot offered')
+  })
+
+  it('a retry makes no second record and no second offer', async () => {
+    const ws = setup()
+    const sb = sandbox(['INV2-HOLD'])
+    await releaseExpired(ws, { api: sb.api, now: NOW })
+    await releaseExpired(ws, { api: sb.api, now: NOW + MIN })
+    invoiceCancelled(ws, 'INV2-HOLD', NOW + 2 * MIN)
+    expect(Object.values(ws.recoveries)).toHaveLength(1)
+    expect(Object.values(ws.offers)).toHaveLength(1)
+  })
+
+  it('names its stage from state: offered, deposit requested, booking confirmed', async () => {
+    const ws = setup()
+    const sb = sandbox(['INV2-HOLD', 'INV2-NEXT'])
+    await releaseExpired(ws, { api: sb.api, now: NOW })
+    const [r] = Object.values(ws.recoveries)
+    await acceptOffer(ws, r.offerId, { api: sb.api, env: ENV, now: NOW + MIN })
+    expect(recoveryStage(ws, r)).toBe('deposit requested')
+    const sent = ws.drafts[ws.offers[r.offerId].draftId].invoiceId
+    expect(sent).toBeTruthy()
+    depositPaid(ws, sent, NOW + 2 * MIN)
+    expect(recoveryStage(ws, r)).toBe('booking confirmed')
+  })
+
+  it('a declined offer adds the next decision to the same record', async () => {
+    const ws = setup()
+    ws.jobs.push({ id: 'sam2', customerId: 'c3', summary: 'Tap', state: 'waiting', hours: 1, free: 'any', start: '', end: '' })
+    ws.waiting.push('sam2')
+    const sb = sandbox(['INV2-HOLD'])
+    await releaseExpired(ws, { api: sb.api, now: NOW })
+    const [r] = Object.values(ws.recoveries)
+    const first = r.offerId
+    declineOffer(ws, first, NOW + MIN)
+    expect(Object.values(ws.recoveries)).toHaveLength(1)
+    expect(r.offerId).not.toBe(first)
+    expect(ws.offers[r.offerId].jobId).toBe('sam2')
+    expect(r.candidates.at(-1)).toMatchObject({ jobId: 'sam2', result: 'chosen' })
   })
 })
