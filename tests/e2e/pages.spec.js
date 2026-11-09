@@ -20,7 +20,7 @@ test('the customer page updates when Dave pays cash', async ({ page }) => {
   await page.goto(`/customer.html?inv=${encodeURIComponent(dave.id)}`)
   await expect(page.locator('#business')).toHaveText(state.ws.settings.business)
   await expect(page.locator('#amount')).toHaveText('108.00')
-  await expect(page.getByText('Scan to pay with PayPal (sandbox)')).toBeVisible()
+  await expect(page.getByText('Scan to pay with PayPal', { exact: true })).toBeVisible()
   await expect(page.locator('#status')).toHaveText('Waiting for payment')
   await expect.poll(() => page.locator('#qr').evaluate((image) => image.naturalWidth)).toBeGreaterThan(0)
 

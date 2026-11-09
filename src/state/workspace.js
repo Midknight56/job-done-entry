@@ -72,7 +72,7 @@ export function seedWorkspace({ id, now, tzOffsetMinutes: tz, demoHold = true })
     createdAt: now,
     tz,
     settings: {
-      business: 'Elm Street Plumbing (demo)',
+      business: 'Elm Street Plumbing',
       rateCard: { ...DEMO_RATE_CARD },
       holdMinutes: demoHold ? 2 : 1440,
       lateDays: LATE_DAYS,

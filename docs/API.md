@@ -13,7 +13,7 @@ cookie `jd_ws`, set by `POST /api/workspace`. Errors answer `{ "error": "<code>"
   "cursor": 42,
   "ws": {
     "id": "...", "tz": -180,
-    "settings": { "business": "Elm Street Plumbing (demo)", "rateCard": { "currency": "USD", "callout": "45.00", "labourPerHour": "85.00", "billingStepMinutes": 15, "taxPercent": "8", "deposit": "50.00" }, "holdMinutes": 2, "workHours": [8, 17] },
+    "settings": { "business": "Elm Street Plumbing", "rateCard": { "currency": "USD", "callout": "45.00", "labourPerHour": "85.00", "billingStepMinutes": 15, "taxPercent": "8", "deposit": "50.00" }, "holdMinutes": 2, "workHours": [8, 17] },
     "customers": [{ "id": "c1", "name": "Maria Lopez", "address": "14 Elm Street", "email": "PayPal sandbox buyer" }],
     "jobs": [{ "id": "j2", "customerId": "c1", "summary": "Kitchen tap", "start": "ISO", "end": "ISO", "state": "booked", "invoiceId": "INV2-...", "depositInvoiceId": "INV2-..." }],
     "invoices": { "INV2-...": { "id": "INV2-...", "customerId": "c1", "jobId": "j2", "kind": "invoice", "total": "282.42", "due": "282.42", "status": "SENT", "sentAt": 0, "reminders": 0, "payerUrl": "https://www.sandbox.paypal.com/...", "cash": false } },

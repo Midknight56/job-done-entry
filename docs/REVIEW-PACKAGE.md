@@ -24,7 +24,7 @@ Source revision: the live build `2a4e457`. Results below are from 9 Nov 2026.
 | Send waits until the visit is confirmed, and the card says why | `confirmInvoiceVisit()` in `src/flows/send.js`; the visit step in `renderProposal()`, `public/cards.js` | "an existing visit: three steps, a visit summary, and Send waits with a reason" (`tests/e2e/invoice-steps.spec.js`) | 0:11 |
 | One tap: PayPal creates and sends the invoice, the app checks PayPal's total, then shows the QR | `sendDraft()` in `src/flows/send.js` | "creates, reads the total, sends, gets the QR and reads the payer link in that order" and "does not send when PayPal total differs from the draft and keeps the invoice id" (`tests/unit/send.test.js`) | 0:18 |
 | Two taps never make two invoices | `invoiceNumber()` in `src/flows/send.js` | "each draft has a fixed invoice number; a duplicate number finds the first invoice and makes no second one" (`tests/unit/send.test.js`) | |
-| Paid is set only by a verified webhook or a status read from PayPal; the film says which | `handleWebhook()` in `src/paypal/webhooks.js`, `applyStatus()` (`paidBy`) in `src/state/money.js` | "a verify result other than SUCCESS gives 400 and no change" (`tests/unit/webhook.test.js`), "rejects a bad signature without changing money" (`tests/unit/battle-d.test.js`) | 0:34 |
+| Paid is set only by a verified webhook or a status read from PayPal | `handleWebhook()` in `src/paypal/webhooks.js`, `applyStatus()` (`paidBy`) in `src/state/money.js` | "a verify result other than SUCCESS gives 400 and no change" (`tests/unit/webhook.test.js`), "rejects a bad signature without changing money" (`tests/unit/battle-d.test.js`) | 0:34 |
 | A follow up takes the earliest free slot; it is an offer until the deposit is paid | `findSlots()` in `src/state/schedule.js`; the booking block in `src/agent/loop.js`; the booking check in `checkFinal()` | "takes the first free slot even when the model called find_slots and chose a later one" (`tests/unit/loop.test.js`), "drops a booking that is not the first free slot" (`tests/unit/guard.test.js`) | 0:42 |
 | Paying the deposit confirms the booking | `applyStatus()` in `src/state/money.js` | "a paid deposit (webhook) ends the hold" (`tests/unit/holds.test.js`), "a booking deposit marks the job booked and records the deposit" (`tests/unit/booking-lifecycle.test.js`) | 0:52 |
 | The paid deposit comes off the final bill; the card shows job price, paid deposit and balance | `balancePrice()` in `src/flows/send.js` | "R6 item 3 shows the full deposit, applied credit and unresolved surplus" (`tests/unit/r6-settlement.test.js`), "a covered bill requires confirmation and opens a receipt with its surplus" (`tests/e2e/battle-f.spec.js`) | 0:55 |
@@ -51,11 +51,12 @@ Source revision: the live build `2a4e457`. Results below are from 9 Nov 2026.
 
 ## Time jumps in the film
 
-Each jump is marked on screen. Times are from the film linked on the Devpost page (1:54).
+Each jump is marked on screen with a small "Sped up" label. Times are from the film linked on the Devpost page
+(1:54).
 
-| Film | What was cut | Said on screen |
-| --- | --- | --- |
-| 0:34 | The wait between the customer's payment and Paid on the phone | "Seen by a status check. Real wait 27 s, cut." |
-| 0:55 | The visit is billed before its day | "Billed before the visit day for this demo" |
-| 1:02 | The two minute deposit hold running out | "Hold set to 2 minutes for this demo." and "Real wait 1 min 58 s, cut" |
+| Film | What was cut |
+| --- | --- |
+| 0:34 | The wait between the customer's payment and Paid on the phone |
+| 1:02 | The deposit hold running out (2 minutes, set in Settings) |
 
+The visit at 0:55 is billed before its day.

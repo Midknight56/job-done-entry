@@ -160,7 +160,7 @@ export function updateInvoiceSheet(state) {
     }
     const scan = document.createElement('p')
     scan.className = 'centered'
-    scan.textContent = 'Scan to pay with PayPal (sandbox)'
+    scan.textContent = 'Scan to pay with PayPal'
     qrCard.append(scan)
     sheet.append(qrCard)
   } else if (!invoice.shared && !closed) {
