@@ -6,6 +6,18 @@ Why it matters: 55% of US small businesses that give customers 30 days to pay ha
 those that ask for payment on the spot (QuickBooks, 2026 Small Business Late Payments Report, published 7 July 2026).
 Job Done asks on the spot: the customer pays on the doorstep.
 
+## Judging criteria at a glance
+
+**Technological Implementation.** PayPal Invoicing API: invoices, QR codes, cash payment records, reminders and cancellations, with verified webhooks and a fixed invoice number per draft, so two taps never make two invoices. AI: Whisper on Workers AI turns speech into text, and Granite 4.0 H Micro calls the app's read only tools. Code removes any amount that no tool returned and nobody said.
+
+**Design.** The invoice card reads in three steps: Job, Visit, Payment. Bryntum Calendar shows each job's money state in words and colours. Nothing is sent until you tap Send.
+
+**Potential Impact.** For tradespeople who work alone and write the invoice at night from memory. 55% of US small businesses that give customers 30 days to pay have overdue invoices; of those that ask for payment on the spot, 26% do (QuickBooks, 2026 Small Business Late Payments Report).
+
+**Innovation/Idea.** One flow for the money of a whole job: bill the work, hold the next visit with a deposit, take the deposit off the final bill, and offer an unpaid slot to the next waiting job that fits, with the reason shown.
+
+**Presentation.** The video runs 1 minute 55 seconds. Try it at https://job-done.midknight-labs.workers.dev: say what you did, send the invoice, and watch the job turn green when PayPal reports it paid.
+
 ## Judge in 60 seconds
 
 1. Open https://job-done.midknight-labs.workers.dev. A fresh demo business is made for you.
