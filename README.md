@@ -8,15 +8,17 @@ Job Done asks on the spot: the customer pays on the doorstep.
 
 ## Judging criteria at a glance
 
-**Technological Implementation.** PayPal Invoicing API: invoices, QR codes, cash payment records, reminders and cancellations, with verified webhooks and a fixed invoice number per draft, so two taps never make two invoices. AI: Whisper on Workers AI turns speech into text, and Granite 4.0 H Micro calls the app's read only tools. Code removes any amount that no tool returned and nobody said.
+**In short.** Job Done is for tradespeople who work alone. Hold a button and say what you did. The app drafts the invoice from your own rate card, and one tap sends it through PayPal Invoicing with a QR code the customer can pay on the doorstep. Paid jobs turn green on a Bryntum Calendar. The next visit is held with a small deposit, and the deposit comes off the final bill.
+
+**Technological Implementation.** PayPal Invoicing API: invoices, QR codes, cash payment records, reminders and cancellations, with verified webhooks and a fixed invoice number per draft, so two taps never make two invoices. AI: Whisper on Workers AI turns speech into text, and Granite 4.0 H Micro calls the app's read only tools. Code removes any amount that no tool returned and nobody said. Check it: [src/paypal/invoices.js](https://github.com/Midknight56/job-done-entry/blob/main/src/paypal/invoices.js), [src/paypal/webhooks.js](https://github.com/Midknight56/job-done-entry/blob/main/src/paypal/webhooks.js), [src/ai/whisper.js](https://github.com/Midknight56/job-done-entry/blob/main/src/ai/whisper.js), [src/agent/guard.js](https://github.com/Midknight56/job-done-entry/blob/main/src/agent/guard.js).
 
 **Design.** The invoice card reads in three steps: Job, Visit, Payment. Bryntum Calendar shows each job's money state in words and colours. Nothing is sent until you tap Send.
 
 **Potential Impact.** For tradespeople who work alone and write the invoice at night from memory. 55% of US small businesses that give customers 30 days to pay have overdue invoices; of those that ask for payment on the spot, 26% do (QuickBooks, 2026 Small Business Late Payments Report).
 
-**Innovation/Idea.** One flow for the money of a whole job: bill the work, hold the next visit with a deposit, take the deposit off the final bill, and offer an unpaid slot to the next waiting job that fits, with the reason shown.
+**Innovation/Idea.** One flow for the money of a whole job: bill the work, hold the next visit with a deposit, take the deposit off the final bill, and offer an unpaid slot to the next waiting job that fits, with the reason shown. Without it, the deposit, the booking and the final bill sit in separate places and are matched by hand. Check it: [src/state/holds.js](https://github.com/Midknight56/job-done-entry/blob/main/src/state/holds.js).
 
-**Presentation.** The video runs 1 minute 55 seconds. Try it at https://job-done.midknight-labs.workers.dev: say what you did, send the invoice, and watch the job turn green when PayPal reports it paid.
+**Presentation.** The video runs 1 minute 55 seconds. Try it at https://job-done.midknight-labs.workers.dev: say what you did, send the invoice, and watch the job turn green when PayPal reports it paid. Video guide: 0:00 say the job, and AI drafts the invoice; 0:18 PayPal sends it with a QR code; 0:27 the customer adds a tip and pays; 0:43 a free slot is held with a deposit; 1:08 an unpaid deposit frees the slot for the next job; 1:43 every figure links to a real invoice.
 
 ## Judge in 60 seconds
 
